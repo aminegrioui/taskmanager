@@ -1,7 +1,7 @@
 package com.aminejava.taskmanager.securityconfig.userdeatails.implementation;
 
 import com.aminejava.taskmanager.securityconfig.rolespermissions.ApplicationRoles;
-import com.aminejava.taskmanager.securityconfig.userdeatails.ApplicationUserDetails;
+import com.aminejava.taskmanager.securityconfig.userdeatails.models.ApplicationUserDetails;
 import com.aminejava.taskmanager.securityconfig.userdeatails.IApplicationUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,13 +24,17 @@ public class MockUserDetailsService implements IApplicationUserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Not Found: " + userName));
     }
 
+    @Override
+    public UserDetails loadAdmin(String username) {
+        return null;
+    }
+
     public List<UserDetails> allUsers() {
 
         return Arrays.asList(
 
                 new ApplicationUserDetails("user", passwordEncoder.encode("password"), ApplicationRoles.USER.getAuthorities(),
-                        true, true, true, true)
-
+                        true, true, true, true,1l)
 
 
         );

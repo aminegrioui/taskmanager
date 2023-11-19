@@ -8,9 +8,21 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+
 @Getter
 public enum ApplicationRoles {
-    USER(Sets.newHashSet());
+    USER(Sets.newHashSet()),
+
+
+    SUPER_ADMIN(Sets.newHashSet()),
+
+
+    ADMIN(Sets.newHashSet()),
+
+
+    MANAGER(Sets.newHashSet());
+
+
 
     private final HashSet<ApplicationPermission> applicationPermissions;
 

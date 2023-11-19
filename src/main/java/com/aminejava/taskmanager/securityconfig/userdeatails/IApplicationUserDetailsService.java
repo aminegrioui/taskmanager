@@ -4,4 +4,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 public interface IApplicationUserDetailsService {
     UserDetails loadUser(String username);
+
+    UserDetails loadAdmin(String username);
 }

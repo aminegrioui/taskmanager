@@ -22,7 +22,7 @@ import java.util.Base64;
 
 @Service
 @Data
-public class KeyGenerator {
+public class KeyGeneratorTool {
 
     @Autowired
     ResourceLoader resourceLoad;

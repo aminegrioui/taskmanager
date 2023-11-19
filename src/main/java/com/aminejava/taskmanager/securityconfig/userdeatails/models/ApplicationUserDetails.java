@@ -1,4 +1,4 @@
-package com.aminejava.taskmanager.securityconfig.userdeatails;
+package com.aminejava.taskmanager.securityconfig.userdeatails.models;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,6 +14,8 @@ public class ApplicationUserDetails implements UserDetails {
     private final boolean isAccountNonLocked;
     private final boolean isCredentialsNonExpired;
     private final boolean isEnabled;
+    private long userId;
+
 
     public ApplicationUserDetails(String username,
                                   String password,
@@ -21,7 +23,8 @@ public class ApplicationUserDetails implements UserDetails {
                                   boolean isAccountNonExpired,
                                   boolean isAccountNonLocked,
                                   boolean isCredentialsNonExpired,
-                                  boolean isEnabled) {
+                                  boolean isEnabled,
+                                  long userId) {
         this.username = username;
         this.password = password;
         this.grantedAuthorities = grantedAuthorities;
@@ -29,6 +32,7 @@ public class ApplicationUserDetails implements UserDetails {
         this.isAccountNonLocked = isAccountNonLocked;
         this.isCredentialsNonExpired = isCredentialsNonExpired;
         this.isEnabled = isEnabled;
+        this.userId = userId;
     }
 
     @Override
@@ -64,5 +68,9 @@ public class ApplicationUserDetails implements UserDetails {
     @Override
     public boolean isEnabled() {
         return isEnabled;
+    }
+
+    public long getId() {
+        return userId;
     }
 }
