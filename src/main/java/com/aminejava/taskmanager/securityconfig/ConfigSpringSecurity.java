@@ -9,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -20,7 +21,7 @@ import static com.aminejava.taskmanager.securityconfig.rolespermissions.Applicat
 
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 public class ConfigSpringSecurity {
 
     private final ApplicationDetailsService applicationUserDetailsService;
@@ -64,7 +65,8 @@ public class ConfigSpringSecurity {
                         "/taskmanager/v1/auth/**",
                         "/taskmanager/v1/authadmin/**",
                         "/taskmanager/v1/refreshToken").permitAll()
-                .requestMatchers("/taskmanager/v1/refreshToken").authenticated().and().authenticationProvider(authenticationProvider());
+                .requestMatchers("/taskmanager/v1/refreshToken").authenticated()
+                .and().authenticationProvider(authenticationProvider());
         return httpSecurity.build();
     }
 
