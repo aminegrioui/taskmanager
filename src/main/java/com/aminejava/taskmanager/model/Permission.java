@@ -1,10 +1,9 @@
 package com.aminejava.taskmanager.model;
 
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.security.core.parameters.P;
 
-import javax.persistence.*;
 import java.util.Objects;
 
 @Entity

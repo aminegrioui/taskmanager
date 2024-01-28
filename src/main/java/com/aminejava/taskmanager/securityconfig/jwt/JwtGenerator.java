@@ -3,7 +3,6 @@ package com.aminejava.taskmanager.securityconfig.jwt;
 
 import com.aminejava.taskmanager.dto.user.LoginResponseDto;
 import com.aminejava.taskmanager.exception.user.UserNameNotFoundException;
-import com.aminejava.taskmanager.model.Permission;
 import com.aminejava.taskmanager.model.User;
 import com.aminejava.taskmanager.model.admin.Admin;
 import com.aminejava.taskmanager.repository.AdminRepository;
@@ -38,8 +37,6 @@ public class JwtGenerator {
     private final KeyGeneratorTool keyGeneratorTool;
     private final UserRepository userRepository;
     private final AdminRepository adminRepository;
-//    @Getter
-//    public ParseTokenResponse parseTokenResponse;
 
     public JwtGenerator(KeyGeneratorTool keyGeneratorTool, UserRepository userRepository, AdminRepository adminRepository) {
         this.keyGeneratorTool = keyGeneratorTool;

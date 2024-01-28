@@ -186,6 +186,9 @@ public class ManagerService {
             usernames.add(user.getUsername());
         }
 
+        if (usernames.isEmpty()) {
+            throw new ValidationDataException("Those given Users don't below to this manager");
+        }
 
         userProjectResponseDto.setUsernamesOfUsers(usernames);
         userProjectResponseDto.setProjectNameOfManager(projectManager.getNameProject());

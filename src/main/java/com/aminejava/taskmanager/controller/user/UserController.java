@@ -4,14 +4,14 @@ import com.aminejava.taskmanager.dto.user.ChangePasswordRequestDto;
 import com.aminejava.taskmanager.dto.user.LoginProfileRequestDto;
 import com.aminejava.taskmanager.dto.userdetails.UserDetailsDto;
 import com.aminejava.taskmanager.services.user.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/taskmanager/v1/user/profile")

@@ -2,7 +2,7 @@ package com.aminejava.taskmanager.system.entities;
 
 import lombok.Data;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.ZonedDateTime;
 
 @Entity

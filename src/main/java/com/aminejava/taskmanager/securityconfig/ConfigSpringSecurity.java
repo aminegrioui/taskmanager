@@ -5,14 +5,15 @@ import com.aminejava.taskmanager.securityconfig.userdeatails.ApplicationDetailsS
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import static com.aminejava.taskmanager.securityconfig.rolespermissions.ApplicationRoles.*;
@@ -20,54 +21,55 @@ import static com.aminejava.taskmanager.securityconfig.rolespermissions.Applicat
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
-public class ConfigSpringSecurity extends WebSecurityConfigurerAdapter {
+public class ConfigSpringSecurity {
 
     private final ApplicationDetailsService applicationUserDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenFilter jwtTokenFilter;
 
-    public ConfigSpringSecurity(ApplicationDetailsService applicationUserDetailsService, PasswordEncoder passwordEncoder, JwtTokenFilter jwtTokenFilter) {
+    public ConfigSpringSecurity(ApplicationDetailsService applicationUserDetailsService,
+                                PasswordEncoder passwordEncoder,
+                                JwtTokenFilter jwtTokenFilter) {
         this.applicationUserDetailsService = applicationUserDetailsService;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenFilter = jwtTokenFilter;
     }
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http.cors().and().csrf().disable()
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        httpSecurity.cors().and().csrf().disable()
 
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .addFilterAfter(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeRequests()
 
-                .antMatchers("/taskmanager/v1/superadmin/management/**", "/taskmanager/v1/superadmin/profile/**").hasRole(SUPER_ADMIN.name())
-
+                .requestMatchers("/taskmanager/v1/superadmin/management/**", "/taskmanager/v1/superadmin/profile/**").hasRole(SUPER_ADMIN.name())
 
                 // Admin
-                .antMatchers("/taskmanager/v1/admin/profile/**",
+                .requestMatchers("/taskmanager/v1/admin/profile/**",
                         "/taskmanager/v1/admin/management/**").hasRole(ADMIN.name())
 
                 // Manager
-                .antMatchers("/taskmanager/v1/manager/management/**",
+                .requestMatchers("/taskmanager/v1/manager/management/**",
                         "/taskmanager/v1/manager/profile").hasRole(MANAGER.name())
 
                 // user
-                .antMatchers("/taskmanager/v1/user/**",
+                .requestMatchers("/taskmanager/v1/user/**",
                         "/taskmanager/v1/projects/**",
                         "/taskmanager/v1/tasks/**",
                         "/taskmanager/v1/subTasks/**").hasRole(USER.name())
 
-                .antMatchers("/taskmanager/v1/intern/management/**",
+                .requestMatchers("/taskmanager/v1/intern/management/**",
                         "/taskmanager/v1/auth/**",
                         "/taskmanager/v1/authadmin/**",
                         "/taskmanager/v1/refreshToken").permitAll()
-                .antMatchers("/taskmanager/v1/refreshToken").authenticated();
+                .requestMatchers("/taskmanager/v1/refreshToken").authenticated().and().authenticationProvider(authenticationProvider());
+        return httpSecurity.build();
     }
 
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) {
-        auth.authenticationProvider(daoAuthenticationProvider());
+    protected AuthenticationProvider authenticationProvider() {
+        return daoAuthenticationProvider();
     }
 
     @Bean
@@ -79,8 +81,8 @@ public class ConfigSpringSecurity extends WebSecurityConfigurerAdapter {
     }
 
     @Bean
-    @Override
-    public AuthenticationManager authenticationManagerBean() throws Exception {
-        return super.authenticationManagerBean();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
+
 }
