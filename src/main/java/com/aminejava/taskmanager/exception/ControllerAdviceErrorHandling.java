@@ -33,7 +33,11 @@ public class ControllerAdviceErrorHandling {
         ErrorDetails errorDetails = new ErrorDetails(LocalDateTime.now(), exception.getMessage(), webRequest.getDescription(false));
         return new ResponseEntity<>(errorDetails, HttpStatus.UNAUTHORIZED);
     }
-
+    @ExceptionHandler(EmailValidationException.class)
+    public ResponseEntity<ErrorDetails> handelEmailValidationException(EmailValidationException exception, WebRequest webRequest) {
+        ErrorDetails errorDetails = new ErrorDetails(LocalDateTime.now(), exception.getMessage(), webRequest.getDescription(false));
+        return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
+    }
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ErrorDetails> handelAuthException(AuthException exception, WebRequest webRequest) {

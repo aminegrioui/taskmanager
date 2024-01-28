@@ -7,6 +7,7 @@ import lombok.Data;
 public class SubTaskUpdateDto {
 
     private String subTaskName;
+    private String description;
 
     private State state;
 }

@@ -1,7 +1,10 @@
 package com.aminejava.taskmanager.securityconfig.jwt.filter;
 
+
+import com.aminejava.taskmanager.dto.user.LoginResponseDto;
 import com.aminejava.taskmanager.exception.GlobalException;
 import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
+import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseClaimsFromResponse;
 import com.google.common.base.Strings;
 import io.jsonwebtoken.Claims;
@@ -30,42 +33,66 @@ import java.util.Collection;
 @Service
 public class JwtTokenFilter extends OncePerRequestFilter {
 
-    private final JwtGenerator jwtGenerator;
+    private final JwtTool jwtTool;
+    private final JwtGenerator generator;
     @Autowired
     @Qualifier("handlerExceptionResolver")
     private HandlerExceptionResolver resolver;
 
-    public JwtTokenFilter(JwtGenerator jwtGenerator) {
-        this.jwtGenerator = jwtGenerator;
+    public JwtTokenFilter(JwtTool jwtTool, JwtGenerator generator) {
+        this.jwtTool = jwtTool;
+
+        this.generator = generator;
     }
 
 
     @Override
     protected void doFilterInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, FilterChain filterChain) throws ServletException, IOException {
 
-
-        String authorization = httpServletRequest.getHeader("Authorization");
-
-        if (Strings.isNullOrEmpty(authorization) || !authorization.startsWith("Bearer ")) {
-            filterChain.doFilter(httpServletRequest, httpServletResponse);
-            return;
+        String authorization = httpServletRequest.getHeader("Authorization_Refresh_Token");
+        String token;
+        boolean isRefreshToken = false;
+        if (!Strings.isNullOrEmpty(authorization)) {
+            token = authorization.replace("refreshToken ", "");
+            isRefreshToken = true;
+        } else {
+            authorization = httpServletRequest.getHeader("Authorization");
+            if (Strings.isNullOrEmpty(authorization) || !authorization.startsWith("Bearer ")) {
+                filterChain.doFilter(httpServletRequest, httpServletResponse);
+                return;
+            }
+            token = authorization.replace("Bearer ", "");
         }
-        String token = authorization.replace("Bearer ", "");
+
 
         try {
             Jws<Claims> claimsJws;
-            claimsJws = jwtGenerator.verifyToken(token);
-            ParseClaimsFromResponse parseClaimsFromResponse = jwtGenerator.parseUserNameAndAuthorities(claimsJws);
+            claimsJws = jwtTool.verifyToken(token);
+            ParseClaimsFromResponse parseClaimsFromResponse = jwtTool.parseUserNameAndAuthorities(claimsJws);
 
             String username = parseClaimsFromResponse.getUsername();
             Collection<? extends GrantedAuthority> grantedAuthorities = parseClaimsFromResponse.getPermissions();
-            UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(username, null, grantedAuthorities);
+            UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken;
+            if (isRefreshToken) {
 
+                LoginResponseDto loginResponseDto = generator.generateNewAccessJwtToken(parseClaimsFromResponse.isAdmin(),
+                        parseClaimsFromResponse.getUsername(),
+                        parseClaimsFromResponse.getExpireTimeOfRefreshToken(),
+                        parseClaimsFromResponse.getExpireTimeOfAccessToken(), parseClaimsFromResponse.getIssueDateOfToken());
+                httpServletResponse.addHeader("accessToken", loginResponseDto.getJwtAccessToken());
+                httpServletResponse.addHeader("refreshToken", loginResponseDto.getJwtRefreshToken());
+            }
+
+            usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(username, null, grantedAuthorities);
             SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+
             filterChain.doFilter(httpServletRequest, httpServletResponse);
         } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException | BadCredentialsException |
-                 ExpiredJwtException e ) {
+                 ExpiredJwtException e) {
             resolver.resolveException(httpServletRequest, httpServletResponse, null, e);
+        } catch (Exception ex) {
+            resolver.resolveException(httpServletRequest, httpServletResponse, null, ex);
+//            throw new GlobalException(ex.getMessage());
         }
     }
 }

@@ -9,4 +9,5 @@ public class SubTaskRequestDto {
     private String subTaskName;
     private State state;
     private Long taskId;
+    private String description;
 }

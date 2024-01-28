@@ -11,4 +11,7 @@ public class UserDetailsDto {
     private String address;
     private String description;
     private String profilePhoto;
+    private String phone;
+    private String mobile;
+    private String job;
 }

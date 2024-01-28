@@ -22,7 +22,4 @@ public class AdminAuthController {
     public ResponseEntity<?> login(@RequestBody UserLoginDto userLoginDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminService.login(userLoginDto));
     }
-   // forget Password using email
-    // send new password to the email
-    // user must change it under 24 hours
 }

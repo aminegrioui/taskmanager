@@ -1,6 +1,7 @@
 package com.aminejava.taskmanager.controller.user;
 
 import com.aminejava.taskmanager.dto.user.ChangePasswordRequestDto;
+import com.aminejava.taskmanager.dto.user.LoginProfileRequestDto;
 import com.aminejava.taskmanager.dto.userdetails.UserDetailsDto;
 import com.aminejava.taskmanager.services.user.UserService;
 import org.springframework.http.HttpHeaders;
@@ -13,7 +14,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 @RestController
-@RequestMapping("/taskmanager/v1/user")
+@RequestMapping("/taskmanager/v1/user/profile")
 public class UserController {
 
     private final UserService userService;
@@ -22,14 +23,14 @@ public class UserController {
         this.userService = userService;
     }
 
-    @GetMapping("/profile")
+    @GetMapping
     public ResponseEntity<?> showProfileOfUser(@RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(userService.showProfileOfUser(requestHeader));
     }
 
-    @PutMapping("/changeUsername/{username}")
-    public ResponseEntity<?> changeUsernameOfUser(@PathVariable String username, @RequestHeader HttpHeaders requestHeader) {
-        return ResponseEntity.status(HttpStatus.OK).body(userService.changeUsernameOfUser(username, requestHeader));
+    @PutMapping("/changeUsername")
+    public ResponseEntity<?> changeUsernameOfUser(@RequestBody LoginProfileRequestDto loginProfileRequestDto, @RequestHeader HttpHeaders requestHeader) {
+        return ResponseEntity.status(HttpStatus.OK).body(userService.changeUsernameOfUser(loginProfileRequestDto, requestHeader));
     }
 
     @PutMapping("/changePassword")
@@ -52,9 +53,9 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body(userService.uploadPhoto(multipartFile, requestHeader));
     }
 
-    @PutMapping("/changeEmail/{newEmail}")
-    public ResponseEntity<?> changeEmail(@PathVariable String newEmail, @RequestHeader HttpHeaders requestHeader) {
-        return ResponseEntity.status(HttpStatus.OK).body(userService.changeEmail(newEmail, requestHeader));
+    @PutMapping("/changeEmail")
+    public ResponseEntity<?> changeEmail(@RequestBody LoginProfileRequestDto loginProfileRequestDto, @RequestHeader HttpHeaders requestHeader) {
+        return ResponseEntity.status(HttpStatus.OK).body(userService.changeEmail(loginProfileRequestDto, requestHeader));
     }
 
     @DeleteMapping("/deleteUser/{userId}")

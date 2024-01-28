@@ -1,29 +1,26 @@
 package com.aminejava.taskmanager.services.project;
 
 import com.aminejava.taskmanager.controller.tool.AppTool;
-import com.aminejava.taskmanager.dto.project.DeleteProjectResponseDto;
-import com.aminejava.taskmanager.dto.project.ProjectResponseDto;
-import com.aminejava.taskmanager.dto.project.ProjectUpdateDto;
-import com.aminejava.taskmanager.dto.task.TaskAddDto;
+import com.aminejava.taskmanager.dto.project.*;
 import com.aminejava.taskmanager.enums.State;
-import com.aminejava.taskmanager.dto.project.ProjectAddDto;
 import com.aminejava.taskmanager.exception.ValidationDataException;
 import com.aminejava.taskmanager.model.Project;
+import com.aminejava.taskmanager.model.ProjectHistoric;
 import com.aminejava.taskmanager.model.Task;
 import com.aminejava.taskmanager.model.User;
+import com.aminejava.taskmanager.repository.ProjectHistoricRepository;
 import com.aminejava.taskmanager.repository.ProjectRepository;
 import com.aminejava.taskmanager.repository.UserRepository;
 import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
+import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseTokenResponse;
+import com.aminejava.taskmanager.system.services.SystemTaskManager;
 import com.google.common.base.Strings;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,53 +29,69 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
-    private final JwtGenerator jwtGenerator;
+    private final JwtTool jwtTool;
     private final AppTool appTool;
     private final ProjectConverter projectConverter;
+    private final SystemTaskManager systemTaskManager;
+    private final ProjectHistoricService projectHistoricService;
+    private final ProjectHistoricRepository projectHistoricRepository;
 
 
-    public ProjectService(ProjectRepository projectRepository, UserRepository userRepository, JwtGenerator jwtGenerator, AppTool appTool, ProjectConverter projectConverter) {
+    public ProjectService(ProjectRepository projectRepository, UserRepository userRepository, JwtTool jwtTool, AppTool appTool, ProjectConverter projectConverter, SystemTaskManager systemTaskManager, ProjectHistoricService projectHistoricService,
+                          ProjectHistoricRepository projectHistoricRepository) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
-        this.jwtGenerator = jwtGenerator;
+        this.jwtTool = jwtTool;
         this.appTool = appTool;
         this.projectConverter = projectConverter;
+        this.systemTaskManager = systemTaskManager;
+        this.projectHistoricService = projectHistoricService;
+        this.projectHistoricRepository = projectHistoricRepository;
     }
 
-    public List<ProjectResponseDto> getAllProjects() {
+    public List<ProjectResponseDto> getAllProjects(HttpHeaders requestHeader) {
+
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
+
         return projectRepository.findAll().stream().filter(project -> !project.isDeleted())
                 .map(projectConverter::convertToProjectResponseDto).collect(Collectors.toList());
     }
 
 
-    public ResponseEntity<?> getProjectsOfTheAuthenticatedUser() {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+    public List<ShortProjectResponseDto> getProjectsOfTheAuthenticatedUser(HttpHeaders requestHeader) {
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
         if (parseTokenResponse.isSuperAdmin()) {
-            return ResponseEntity.status(HttpStatus.OK).body(
+            return
                     projectRepository.findAll().
                             stream().filter(project -> !project.isDeleted())
-                            .map(this::convertProjectToProjectResponseDto)
-                            .collect(Collectors.toList()));
+                            .map(project ->
+                                    new ShortProjectResponseDto(project.getProjectId(),
+                                            project.getNameProject(), project.getDescription(), project.getPriority()))
+                            .sorted(Comparator.comparing(o -> o.getPriority().getPriorityNumber()))
+                            .collect(Collectors.toList());
         }
-        return ResponseEntity.status(HttpStatus.OK).body(
+        return
                 projectRepository.findAll().
                         stream().filter(project -> project.getUser().getId().longValue() == parseTokenResponse.getId() && !project.isDeleted())
-                        .map(this::convertProjectToProjectResponseDto)
-                        .collect(Collectors.toList()));
+                        .map(project ->
+                                new ShortProjectResponseDto(project.getProjectId(),
+                                        project.getNameProject(), project.getDescription(), project.getPriority()))
+                        .sorted(Comparator.comparing(o -> o.getPriority().getPriorityNumber()))
+                        .collect(Collectors.toList());
     }
 
     @Transactional
-    public ProjectResponseDto saveProject(ProjectAddDto projectDto) {
+    public ProjectResponseDto saveProject(ProjectDto projectDto, HttpHeaders requestHeader) {
 
 
-        ProjectResponseDto projectResponseDto = new ProjectResponseDto();
-
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
-
-
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
         Long id = parseTokenResponse.getId();
-
-
         if (Strings.isNullOrEmpty(projectDto.getNameProject())) {
             throw new ValidationDataException("You must give a Name for the Project ");
         }
@@ -92,14 +105,26 @@ public class ProjectService {
         project.setNameProject(projectDto.getNameProject());
         project.setDescription(projectDto.getDescription());
 
-        if (!Strings.isNullOrEmpty(projectDto.getProjectEnd())) {
-            // clean code: Can't end in the past, compare with start.
-
-            project.setEndProject(appTool.convertStringToZonedDateTime(projectDto.getProjectEnd()));
+        // EndProject : is planning to end project
+        if (!Strings.isNullOrEmpty(projectDto.getEndProject())) {
+            if (!appTool.isValidDate(projectDto.getEndProject())) {
+                throw new ValidationDataException("The given end date is not valid: The correct date is: yyyy-mm-dd");
+            }
+            project.setEndProject(appTool.convertStringToZonedDateTime(projectDto.getEndProject()));
+            if (project.getEndProject().isBefore(appTool.nowTime())) {
+                throw new ValidationDataException("The given end date must be in the future");
+            }
         }
         if (!Strings.isNullOrEmpty(projectDto.getProjectStart())) {
-            // clean code: Can't start in the past
+            if (!appTool.isValidDate(projectDto.getProjectStart())) {
+                throw new ValidationDataException("The start end date is not valid: The correct date is: yyyy-mm-dd");
+            }
             project.setProjectStart(appTool.convertStringToZonedDateTime(projectDto.getProjectStart()));
+            if (project.getEndProject() != null && project.getEndProject().isBefore(project.getProjectStart())) {
+                throw new ValidationDataException("The end date must be after start date");
+            }
+        } else {
+            project.setProjectStart(appTool.nowTime());
         }
         if (projectDto.getPriority() != null) {
             project.setPriority(projectDto.getPriority());
@@ -118,14 +143,20 @@ public class ProjectService {
 
         project.setUser(optionalUser.get());
 
-        return convertProjectToProjectResponseDto(projectRepository.save(project));
+        // new Project
+        Project newProject = projectRepository.save(project);
+
+        // Historic Project
+        projectHistoricService.saveHistoricOfNewProject(newProject);
+        return convertProjectToProjectResponseDto(newProject);
     }
 
 
-    public ProjectResponseDto getProjectById(Long projectId) {
+    public ProjectResponseDto getProjectById(Long projectId, HttpHeaders requestHeader) {
 
-        ProjectResponseDto projectResponseDto = new ProjectResponseDto();
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
 
         Optional<Project> optionalProject = projectRepository.findProjectByProjectId(projectId);
         if (optionalProject.isEmpty() || optionalProject.get().isDeleted()) {
@@ -140,69 +171,88 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectResponseDto updateProject(ProjectUpdateDto newProject) {
+    public ProjectResponseDto updateProject(Long projectId, ProjectDto newProject, HttpHeaders requestHeader) {
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
 
-        ProjectResponseDto projectResponseDto = new ProjectResponseDto();
-        Optional<Project> optionalProject = projectRepository.findByNameProject(newProject.getNameProject());
+        if (projectId == null || projectId <= 0) {
+            throw new ValidationDataException("To update a project must be given a valid projectId");
+        }
+        Optional<Project> optionalProject = projectRepository.findById(projectId);
 
         if (optionalProject.isEmpty() || optionalProject.get().isDeleted()) {
-            throw new ValidationDataException("A Project with  this name: " + newProject.getNameProject() + " is not found or deleted");
+            throw new ValidationDataException("A Project with  this project: " + projectId + " is not found or deleted");
         }
 
         Project oldProject = optionalProject.get();
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
-        Long idUserOrAdmin = oldProject.getUser().getId();
-        if (parseTokenResponse.getId().longValue() != idUserOrAdmin) {
+        Project trackOldProjectValue = new Project();
+        Long userId = oldProject.getUser().getId();
+        if (parseTokenResponse.getId().longValue() != userId) {
             throw new ValidationDataException("You can't access this request, The requested Project is for another User");
         }
 
+        Optional<User> optionalUser = userRepository.findUserById(userId);
 
-        if (newProject.getTasks() != null && !newProject.getTasks().isEmpty()) {
-            Set<Task> tasks = oldProject.getTasks();
-            newProject.getTasks().stream().filter(task -> task.getState() == null).forEach(task -> task.setState(State.OPEN));
-
-            for (TaskAddDto taskDto : newProject.getTasks()) {
-                if (!Strings.isNullOrEmpty(taskDto.getName())) {
-                    Task task = convertTaskDtoToTask(taskDto);
-                    task.setProject(oldProject);
-                    tasks.add(task);
-                }
-            }
-            oldProject.setTasks(tasks);
-        }
-
-        if (!Strings.isNullOrEmpty(newProject.getNameProject())) {
+        if(!Strings.isNullOrEmpty(newProject.getNameProject())){
+            trackOldProjectValue.setNameProject(oldProject.getNameProject());
             oldProject.setNameProject(newProject.getNameProject());
         }
-        if (!Strings.isNullOrEmpty(newProject.getProjectEnd())) {
-            oldProject.setEndProject(appTool.convertStringToZonedDateTime(newProject.getProjectEnd()));
+
+        if (!Strings.isNullOrEmpty(newProject.getEndProject())) {
+            if (!appTool.isValidDate(newProject.getEndProject())) {
+                throw new ValidationDataException("The given end date is not valid: The correct date is: yyyy-mm-dd");
+            }
+            trackOldProjectValue.setEndProject(oldProject.getEndProject());
+            oldProject.setEndProject(appTool.convertStringToZonedDateTime(newProject.getEndProject()));
+            // track old values
+            if (oldProject.getEndProject().isBefore(appTool.nowTime())) {
+                throw new ValidationDataException("The given end date must be in the future");
+            }
         }
         if (!Strings.isNullOrEmpty(newProject.getProjectStart())) {
+            if (!appTool.isValidDate(newProject.getProjectStart())) {
+                throw new ValidationDataException("The start end date is not valid: The correct date is: yyyy-mm-dd");
+            }
+            trackOldProjectValue.setProjectStart(oldProject.getProjectStart());
             oldProject.setProjectStart(appTool.convertStringToZonedDateTime(newProject.getProjectStart()));
+            if (oldProject.getEndProject() != null && oldProject.getEndProject().isBefore(oldProject.getProjectStart())) {
+                throw new ValidationDataException("The end date must be after start date");
+            }
         }
         if (newProject.getPriority() != null) {
+            trackOldProjectValue.setPriority(oldProject.getPriority());
             oldProject.setPriority(newProject.getPriority());
         }
         if (!Strings.isNullOrEmpty(newProject.getDepartment())) {
+            trackOldProjectValue.setDepartment(oldProject.getDepartment());
             oldProject.setDepartment(newProject.getDepartment());
         }
-
         if (!Strings.isNullOrEmpty(newProject.getDescription())) {
+            trackOldProjectValue.setDescription(oldProject.getDescription());
             oldProject.setDescription(newProject.getDescription());
         }
 
+        // save historic of project
+       ProjectHistoric projectHistoric=  projectHistoricService.saveUpdatedValuesOfProject(trackOldProjectValue, newProject);
+        Set<ProjectHistoric> projectHistorics=oldProject.getProjectHistorics();
+        projectHistorics.add(projectHistoric);
+        oldProject.setProjectHistorics(projectHistorics);
+        projectHistoric.setProject(oldProject);
         return convertProjectToProjectResponseDto(oldProject);
     }
 
 
     @Transactional
-    public DeleteProjectResponseDto deleteProjectById(Long id) {
+    public DeleteProjectResponseDto deleteProjectById(Long id, HttpHeaders requestHeader) {
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
         Optional<Project> optionalProject = projectRepository.findProjectByProjectId(id);
         if (optionalProject.isEmpty()) {
             return new DeleteProjectResponseDto(false, "A Project with  this id: " + id + " is not found");
         }
 
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
         if (parseTokenResponse.getId().longValue() != optionalProject.get().getUser().getId()) {
             return new DeleteProjectResponseDto(false, "Can't delete this Project. It belongs to another User");
         }
@@ -213,25 +263,62 @@ public class ProjectService {
         }
         optionalProject.get().getTasks().forEach(task -> task.setDeleted(true));
         optionalProject.get().setDeleted(true);
+        // save historic of project
+       ProjectHistoric projectHistoric= projectHistoricService.saveDeletedDatumOfProject(optionalProject.get());
+       Set<ProjectHistoric> projectHistorics=optionalProject.get().getProjectHistorics();
+       projectHistorics.add(projectHistoric);
+       optionalProject.get().setProjectHistorics(projectHistorics);
+       projectHistoric.setProject(optionalProject.get());
         return new DeleteProjectResponseDto(true, "The Project with id: " + id + " is deleted");
     }
 
+
+    public ProjectResponseDto setProjectToFinish(Long projectId, HttpHeaders requestHeader) {
+        if (projectId != null || projectId.longValue() < 0) {
+            throw new ValidationDataException("give a projectId to make the project finished ");
+        }
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
+        Optional<Project> optionalProject = projectRepository.findProjectByProjectId(projectId);
+        if (optionalProject.isEmpty()) {
+            throw new ValidationDataException("A Project with  this id: " + projectId + " is not found");
+        }
+
+        if (parseTokenResponse.getId().longValue() != optionalProject.get().getUser().getId()) {
+            throw new ValidationDataException("Can't delete this Project. It belongs to another User");
+        }
+
+        if (optionalProject.get().isDeleted()) {
+            throw new ValidationDataException("Project with with id: " + projectId + " is already  deleted");
+        }
+        Project project = optionalProject.get();
+        Set<Task> tasks = project.getTasks();
+        tasks.stream().forEach(task ->
+        {
+            task.setState(State.COMPLETED);
+            if (task.getSubTasks() != null && !task.getSubTasks().isEmpty()) {
+                task.getSubTasks().forEach(subTask -> subTask.setState(State.COMPLETED));
+            }
+        });
+       ProjectHistoric projectHistoric=  projectHistoricService.saveFinishedDatum(project);
+        Set<ProjectHistoric> projectHistorics=project.getProjectHistorics();
+        projectHistorics.add(projectHistoric);
+        project.setProjectHistorics(projectHistorics);
+        projectHistoric.setProject(project);
+        return convertProjectToProjectResponseDto(project);
+    }
     private ProjectResponseDto convertProjectToProjectResponseDto(Project project) {
         ProjectResponseDto projectResponseDto = new ProjectResponseDto();
         projectResponseDto.setUserName(project.getUser().getUsername());
-        projectResponseDto.setProjectName(project.getNameProject());
+        projectResponseDto.setNameProject(project.getNameProject());
         projectResponseDto.setPriority(project.getPriority());
         projectResponseDto.setDescription(project.getDescription());
+        projectResponseDto.setEndProject(project.getEndProject() + "");
+        projectResponseDto.setProjectStart(project.getProjectStart() + "");
+        projectResponseDto.setTasks(project.getTasks());
+        projectResponseDto.setDepartment(project.getDepartment());
         return projectResponseDto;
-    }
-
-    private Task convertTaskDtoToTask(TaskAddDto taskDto) {
-        Task task = new Task();
-        task.setName(taskDto.getName());
-        task.setDescription(task.getDescription());
-        task.setState(taskDto.getState());
-        task.setPriority(task.getPriority());
-        return task;
     }
 
 

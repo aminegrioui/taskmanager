@@ -11,12 +11,10 @@ import com.aminejava.taskmanager.model.User;
 import com.aminejava.taskmanager.securityconfig.rolespermissions.ApplicationPermission;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.aminejava.taskmanager.securityconfig.rolespermissions.ApplicationPermission.*;
@@ -114,17 +112,10 @@ public class AppTool {
         );
     }
 
-    public boolean isContainsRoleAndPermissionsOfManagerList(String permission) {
-        for (ApplicationPermission applicationPermission : getRoleAndPermissionsOfManager()) {
-            if (applicationPermission.getName().equals(permission)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     public boolean checkValidationOfGivenEmail(String newEmail) {
-        return true;
+        String EMAIL_VERIFICATION = "^([\\w-\\.]+){1,64}@([\\w&&[^_]]+){2,255}.[a-z]{2,}$";
+        return newEmail.matches(EMAIL_VERIFICATION);
     }
 
     public boolean validUserName(String newUsername) {
@@ -171,27 +162,34 @@ public class AppTool {
     }
 
     public boolean givenBadCredentialsMoreOrEqualThanThreeAndUnderThanTenMinutes(String username, String operation) {
+        Optional<User> optionalUser = userRepository.findByUsername(username);
+        User user = null;
+        if (optionalUser.isPresent()) {
+            user = optionalUser.get();
+            if (!user.isAccountNonLocked()) {
+                throw new UserLockoutException("This Account is locked for 24  Hours ");
+            }
+        }
         ZonedDateTime endTime = nowTime();
-        ZonedDateTime startTime = endTime.minusMinutes(10);
+        ZonedDateTime startTime = endTime.minusMinutes(5);
         List<TaskManagerUserHistoric> loggers = taskManagerUserLoggerRepository.findByUsernameAndTimestampBetweenDate(username, startTime, endTime, operation);
         if (loggers != null) {
             List<TaskManagerUserHistoric> lastFiveOgUserHistoric = loggers.stream().limit(3).collect(Collectors.toList());
             if (lastFiveOgUserHistoric.size() >= 3 && lastFiveOgUserHistoric.stream().noneMatch(TaskManagerUserHistoric::isSuccessOperation)) {
-                // save username in BlackList
-                saveNewBlackListWithUsername(username);
-                Optional<User> optionalUser = userRepository.findByUsername(username);
-                if (optionalUser.isPresent()) {
-                    User user = optionalUser.get();
-                    if (!user.isAccountNonLocked()) {
-                        throw new UserLockoutException("This Account is locked for 24 Hours ");
-                    }
-                    // save username in BlackList
-                    saveNewBlackListWithUsername(username);
+
+                // save username in BlackList: Just one time after the 3 Times false login
+                // Why? a user is succsfully log in. he has a valid token. but he tried to log in
+                // 3 false log in => this user must not work with the token(valid)
+
+                if (user != null) {
+                    saveNewBlackListWithUsername(username,"BAD_CREDENTIALS");
                     user.setZonedDateTimeLockedUser(endTime);
                     user.setAccountNonLocked(false);
                     userRepository.save(user);
-                    throw new UserLockoutException("You try to log in five times with an incorrect password. This user account is blocked at now for 24 hours.");
+                    throw new UserLockoutException("You try to log in 3 times with an incorrect password. This user account is blocked at now for 24 hours.");
                 }
+
+
             }
         }
 
@@ -213,7 +211,7 @@ public class AppTool {
                         throw new UserLockoutException("This Account is locked for 24 Hours ");
                     }
                     // save username in BlackList
-                    saveNewBlackListWithUsername(username);
+                    saveNewBlackListWithUsername(username,"BAD_CREDENTIALS");
                     admin.setZonedDateTimeLockedUser(endTime);
                     admin.setAccountNonLocked(false);
                     adminRepository.save(admin);
@@ -238,12 +236,29 @@ public class AppTool {
         return localDate.atStartOfDay(europaBerlin);
     }
 
-    public void saveNewBlackListWithUsername(String username) {
+    public ZonedDateTime convertStringToZonedDateTime2(String dateAsString) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss", Locale.GERMAN);
+        LocalDateTime localDateTime = LocalDateTime.parse(dateAsString, formatter);
+        ZoneId europaBerlin = ZoneId.of("Europe/Berlin");
+        return localDateTime.atZone(europaBerlin);
+    }
+
+    public void saveNewBlackListWithUsername(String username, String cause) {
         BlacklistEntry blacklistEntry = new BlacklistEntry();
-        ZonedDateTime expireTimeOfToken = nowTime().plusMinutes(10);
-        blacklistEntry.setUsername(username);
-        blacklistEntry.setExpiryTime(expireTimeOfToken);
-        blacklistEntryRepository.save(blacklistEntry);
+        // ZonedDateTime is time of now + the 24 Hours
+        if (blacklistEntryRepository.findByUsername(username) == null) {
+            ZonedDateTime expireTimeOfToken = nowTime().plusMinutes(10);
+            blacklistEntry.setUsername(username);
+            blacklistEntry.setExpiryTime(expireTimeOfToken);
+            blacklistEntry.setCause(cause);
+            blacklistEntryRepository.save(blacklistEntry);
+        }
+
+    }
+
+    public boolean isValidDate(String date) {
+        String regex = "^((19|20)\\d\\d)-(0?[1-9]|1[012])-(0?[1-9]|[12][0-9]|3[01])$";
+        return Pattern.matches(regex, date);
     }
 
 }

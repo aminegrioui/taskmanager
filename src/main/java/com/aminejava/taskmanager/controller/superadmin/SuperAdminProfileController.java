@@ -6,6 +6,7 @@ import com.aminejava.taskmanager.services.adminmamagment.SuperAdminProfileServic
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +23,7 @@ public class SuperAdminProfileController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> showProfileOfSuperAdmin(@RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(superAdminProfileService.showProfileOAdmin(requestHeader));
     }
@@ -42,6 +44,7 @@ public class SuperAdminProfileController {
     }
 
     @PutMapping("/updateSuperAdminDetails")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> updateAdminDetails(@RequestBody UserDetailsDto userDetailsDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(superAdminProfileService.updateAdminDetails(userDetailsDto, requestHeader));
     }
@@ -60,5 +63,11 @@ public class SuperAdminProfileController {
     public ResponseEntity<?> deletePhotoOfSuperAdmin(@RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(superAdminProfileService.deletePhoto(requestHeader));
     }
+
+    @DeleteMapping("/deleteSupperAdminAccount")
+    public ResponseEntity<?> deleteUserById(@RequestHeader HttpHeaders requestHeader) {
+        return ResponseEntity.status(HttpStatus.OK).body(superAdminProfileService.deleteSuperAdminAccount(requestHeader));
+    }
+
 
 }

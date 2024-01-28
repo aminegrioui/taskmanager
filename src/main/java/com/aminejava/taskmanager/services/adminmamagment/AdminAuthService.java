@@ -2,8 +2,8 @@ package com.aminejava.taskmanager.services.adminmamagment;
 
 import com.aminejava.taskmanager.controller.tool.AppTool;
 import com.aminejava.taskmanager.dto.management.AdminResponseDto;
-import com.aminejava.taskmanager.dto.management.ManagerRoleRegisterDto;
 import com.aminejava.taskmanager.dto.management.AddManagementRoleRegisterDto;
+import com.aminejava.taskmanager.dto.user.LoginResponseDto;
 import com.aminejava.taskmanager.dto.user.UserLoginDto;
 import com.aminejava.taskmanager.exception.GlobalException;
 import com.aminejava.taskmanager.exception.ValidationDataException;
@@ -35,7 +35,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
-import static com.aminejava.taskmanager.securityconfig.rolespermissions.ApplicationPermission.*;
 import static com.aminejava.taskmanager.securityconfig.rolespermissions.ApplicationRoles.*;
 
 
@@ -156,7 +155,7 @@ public class AdminAuthService {
         return adminResponseDto;
     }
 
-    public String login(UserLoginDto userLoginDto) {
+    public LoginResponseDto login(UserLoginDto userLoginDto) {
         if (Strings.isNullOrEmpty(userLoginDto.getPassword()) || Strings.isNullOrEmpty(userLoginDto.getUsername())) {
             throw new ValidationDataException("To login you have to give username and password ");
         }
@@ -166,15 +165,15 @@ public class AdminAuthService {
             UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(userNameAdmin, userLoginDto.getPassword());
 
             Authentication authentication = authenticationManager.authenticate(usernamePasswordAuthenticationToken);
-            String jwt = jwtGenerator.generateJwtToken(true, authentication,
+            LoginResponseDto loginResponseDto  = jwtGenerator.generateAccessAndRefreshJwtToken(true, authentication,
                     ((ApplicationUserDetails) authentication.getPrincipal()).getId(), userLoginDto.getUsername());
 
             taskManagerAdminHistoric.setResponseBody("Successful created jwt");
             taskManagerAdminHistoric.setSuccessOperation(true);
             taskManagerAdminHistoricRepository.save(taskManagerAdminHistoric);
-            return jwt;
+            return loginResponseDto;
         } catch (InternalAuthenticationServiceException userNameNotFoundException) {
-            throw new UserNameNotFoundException("Username not found !! ");
+            throw new UserNameNotFoundException("Account with this Username is not found!! ");
         } catch (AuthenticationException authenticationException) {
             taskManagerAdminHistoric.setErrorMessage(authenticationException.getMessage());
             appTool.checkCountLockedAdmin(taskManagerAdminHistoric);
@@ -184,74 +183,8 @@ public class AdminAuthService {
             throw new UserLockoutException(userLockoutException.getMessage());
         } catch (Exception e) {
             taskManagerAdminHistoric.setErrorMessage(e.getMessage());
-//            appTool.checkCountLockedAdmin(taskManagerAdminHistoric);
             throw new GlobalException(e.getMessage());
         }
 
     }
-
-
-//
-//    public AdminResponseDto registerManagerRole(ManagerRoleRegisterDto managerRoleRegisterDto) {
-//        Optional<Admin> optionalAdmin = adminRepository.findAdminByUsername(managerRoleRegisterDto.getUsername());
-//        AdminResponseDto adminResponseDto = new AdminResponseDto();
-//        if (optionalAdmin.isEmpty() || managerRoleRegisterDto.isAffectManagerRole()) {
-//            if (Strings.isNullOrEmpty(managerRoleRegisterDto.getUsername())) {
-//                adminResponseDto.setDescription("This username should not null or empty ");
-//                return adminResponseDto;
-//            }
-//            if (Strings.isNullOrEmpty(managerRoleRegisterDto.getEmail())) {
-//                adminResponseDto.setDescription("This email should not null or empty ");
-//                return adminResponseDto;
-//            }
-//            Admin admin = new Admin();
-//            admin.setUsername(managerRoleRegisterDto.getUsername());
-//            admin.setPassword(passwordEncoder.encode(managerRoleRegisterDto.getPassword()));
-//            admin.setEmail(managerRoleRegisterDto.getEmail());
-//
-//            admin.setEnabled(true);
-//            admin.setCredentialsNonExpired(true);
-//            admin.setAccountNonLocked(true);
-//            admin.setAccountNonExpired(true);
-//
-//            HashSet<ApplicationPermission> applicationPermissions = new HashSet<>();
-//            HashSet<Permission> permissions = new HashSet<>();
-//            Permission permission;
-//
-//            if (managerRoleRegisterDto.getApplicationRoles().name().equals(ADMIN.name())) {
-//                applicationPermissions.add(WRITE_MANAGER);
-//                applicationPermissions.add(READ_MANAGER);
-//                applicationPermissions.add(WRITE_USER);
-//                applicationPermissions.add(READ_USER);
-//                permission = permissionRepository.findByPermission(ROLE + managerRoleRegisterDto.getApplicationRoles().name());
-//                permissions.add(permission);
-//            }
-//            if (managerRoleRegisterDto.getApplicationRoles().name().equals(MANAGER.name())) {
-//                applicationPermissions.add(WRITE_USER);
-//                applicationPermissions.add(READ_USER);
-//                applicationPermissions.add(WRITE_PROJECT);
-//                applicationPermissions.add(READ_PROJECT);
-//                applicationPermissions.add(WRITE_TASK);
-//                applicationPermissions.add(READ_TASK);
-//                permission = permissionRepository.findByPermission(ROLE + MANAGER);
-//                permissions.add(permission);
-//            }
-//
-//            for (ApplicationPermission applicationPermission : applicationPermissions) {
-//                permission = permissionRepository.findByPermission(applicationPermission.getName());
-//                permissions.add(permission);
-//            }
-//            admin.setPermissions(permissions);
-//            adminRepository.save(admin);
-//
-//            // Send Email to the registered Admin/Manager
-//
-//            adminResponseDto.setUsername(managerRoleRegisterDto.getUsername());
-//            adminResponseDto.setDescription("The admin: " + managerRoleRegisterDto.getUsername() + " is registered in successfaully: ");
-//            return adminResponseDto;
-//        }
-//        adminResponseDto.setDescription("This admin is already exists");
-//        return adminResponseDto;
-//    }
-
 }

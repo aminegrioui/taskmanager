@@ -29,18 +29,20 @@ public class ScanTaskManagerApp {
     private final AppTool appTool;
     private final UserRepository userRepository;
     private final TaskManagerUserLoggerRepository taskManagerUserLoggerRepository;
+    private final EmailService emailService;
 
     public ScanTaskManagerApp(UserService userService, AppTool appTool,
                               UserRepository userRepository,
                               TaskManagerUserLoggerRepository taskManagerUserLoggerRepository,
                               AdminRepository adminRepository,
-                              TaskManagerAdminLoggerRepository taskManagerAdminHistoricRepository) {
+                              TaskManagerAdminLoggerRepository taskManagerAdminHistoricRepository, EmailService emailService) {
         this.userService = userService;
         this.appTool = appTool;
         this.userRepository = userRepository;
         this.taskManagerUserLoggerRepository = taskManagerUserLoggerRepository;
         this.adminRepository = adminRepository;
         this.taskManagerAdminHistoricRepository = taskManagerAdminHistoricRepository;
+        this.emailService = emailService;
     }
 
     @Scheduled(cron = "0 0/10 * * * ?", zone = "Europe/Berlin")
@@ -56,10 +58,12 @@ public class ScanTaskManagerApp {
             }
             log.info("NOW_BERLIN" + nowBerlin.toString());
             log.info("TIME_LOCKED_USER" + zonedDateTimeOfLockedUser);
+            // The difference between expired time and now must bigger or equal 24 hours
             boolean isTime = Duration.between(zonedDateTimeOfLockedUser, nowBerlin).toMinutes() >= 10;
             log.info("From Locked Time: " + zonedDateTimeOfLockedUser + " to now: " + nowBerlin + " is more than 10 Minutes is: " + isTime);
             if (isTime) {
                 // Send email to user
+                emailService.sendEmailToUser(user.getEmail(),user.getUsername(),null);
                 TaskManagerUserHistoric taskManagerUserHistoric = appTool.logOperationOfUsers(user.getUsername(), "SCAN_LOCKED_USERS");
                 taskManagerUserHistoric.setSuccessOperation(true);
                 taskManagerUserHistoric.setResponseBody("Account with username: " + user.getUsername() + " is again active ");

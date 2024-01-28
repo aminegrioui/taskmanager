@@ -12,7 +12,7 @@ public class ProjectConverter {
 
         return new ProjectResponseDto(project.getNameProject(),
                 project.getDescription(), project.getUser().getUsername(), project.getPriority(),
-                project.getProjectStart(), project.getEndProject(),
+                project.getProjectStart()+"", project.getEndProject()+"",
                 project.getTasks());
     }
 }

@@ -21,6 +21,8 @@ public class SubTask {
     private String subTaskName;
 
     private State state;
+
+    private String description;
     @JsonIgnore
     private boolean deleted;
 

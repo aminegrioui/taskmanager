@@ -7,6 +7,7 @@ import com.aminejava.taskmanager.services.adminmamagment.AdminService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -21,7 +22,6 @@ public class AdminController {
         this.adminService = adminService;
         this.adminManagementService = adminManagementService;
     }
-   // affectPermissions delete per
 
     @GetMapping("/allMangers")
     public ResponseEntity<?> getAllManagers(@RequestHeader HttpHeaders requestHeader) {
@@ -38,20 +38,24 @@ public class AdminController {
     }
 
     @PostMapping("/addManager")
+    @PreAuthorize("hasAuthority('write:manager')")
     public ResponseEntity<?> addManager(@RequestBody AddManagementRoleRegisterDto addManagementRoleRegisterDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminService.addManager(addManagementRoleRegisterDto, requestHeader));
     }
 
     @DeleteMapping("/deleteManager/{id}")
-    private ResponseEntity<?> deleteManager(@PathVariable Long id, @RequestHeader HttpHeaders requestHeader) {
+    @PreAuthorize("hasAuthority('write:manager')")
+    public ResponseEntity<?> deleteManager(@PathVariable Long id, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(adminService.deleteManager(id, requestHeader));
     }
     @DeleteMapping("/deleteUser/{id}")
-    private ResponseEntity<?> deleteUser(@PathVariable Long id, @RequestHeader HttpHeaders requestHeader) {
+    @PreAuthorize("hasAuthority('write:user')")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(adminService.deleteUser(id, requestHeader));
     }
 
     @PostMapping("/addUser")
+    @PreAuthorize("hasAuthority('write:user')")
     public ResponseEntity<?> saveUser(@RequestBody AddUserDto addUserDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminManagementService.saveUser(addUserDto, requestHeader));
     }

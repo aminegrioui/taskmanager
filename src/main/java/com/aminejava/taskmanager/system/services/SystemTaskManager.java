@@ -1,6 +1,7 @@
 package com.aminejava.taskmanager.system.services;
 
 import com.aminejava.taskmanager.controller.tool.AppTool;
+import com.aminejava.taskmanager.dto.management.superadmin.TogglePermission;
 import com.aminejava.taskmanager.exception.user.AuthException;
 import com.aminejava.taskmanager.exception.user.UserLockoutException;
 import com.aminejava.taskmanager.repository.BlacklistEntryRepository;
@@ -29,7 +30,7 @@ public class SystemTaskManager {
 
     // blackList logic
 
-    @Scheduled(cron = "0 0/5 * * * ?", zone = "Europe/Berlin")
+    @Scheduled(cron = "0 0/10 * * * ?", zone = "Europe/Berlin")
     public void scanBlackList() {
         log.info("SCAN_BLACK_LIST");
         List<BlacklistEntry> blacklistEntries = blacklistEntryRepository.findAll();
@@ -43,6 +44,7 @@ public class SystemTaskManager {
                 blacklistEntryRepository.delete(blacklistEntry);
             }
             String username = blacklistEntry.getUsername();
+            // Checked: in situation when the user false "3" times login but he had valid token
             removedBlackListEntry = blacklistEntryRepository.findByUsernameAndExpiryTimeIsLessThanEqual(username, nowTime);
             if (removedBlackListEntry != null) {
                 log.info("The removed username from BlackList is: " + username + " The expired time is: " + removedBlackListEntry.getExpiryTime() + "Now is: " + nowTime);
@@ -55,6 +57,7 @@ public class SystemTaskManager {
     public void saveNewTokenToBlackList(String token) {
         log.info("SAVE_NEW_TOKEN_IN_BLACK_LIST");
         String bodyOfToken = token.substring(token.indexOf('.') + 1, 132);
+        // This ZonedDateTime is more than expired time of Token (exp time of token)
         ZonedDateTime expireTimeOfToken = appTool.nowTime().plusMinutes(10);
         BlacklistEntry blacklistEntry = new BlacklistEntry();
         blacklistEntry.setToken(bodyOfToken);
@@ -63,8 +66,14 @@ public class SystemTaskManager {
     }
 
     public void checkTokenInBlackList(String username, HttpHeaders requestHeader, HttpServletRequest request) {
-        // this situation when the user has 3 times fialed log in: must wait the 24 Hours
+        // this situation when the user has 3 times failed log in: must wait the 24 Hours
         BlacklistEntry blacklistUserNameEntry = blacklistEntryRepository.findByUsername(username);
+        if (blacklistUserNameEntry != null && blacklistUserNameEntry.getCause().equalsIgnoreCase("DISABLE_USER")) {
+            throw new UserLockoutException("This Account  is disabled. Contact Administration");
+        }
+        if (blacklistUserNameEntry != null && blacklistUserNameEntry.getCause().equalsIgnoreCase(TogglePermission.DELETE_PERMISSION.name())) {
+            throw new AuthException("This Account  must log in again. Permission was deleted from this Account ");
+        }
         if (blacklistUserNameEntry != null && blacklistUserNameEntry.getExpiryTime().isAfter(appTool.nowTime())) {
             throw new UserLockoutException("This Account is locked for 24 Hours ");
         }

@@ -12,6 +12,7 @@ import com.aminejava.taskmanager.model.admin.Admin;
 import com.aminejava.taskmanager.repository.AdminRepository;
 import com.aminejava.taskmanager.repository.TaskManagerAdminLoggerRepository;
 import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
+import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseTokenResponse;
 import com.aminejava.taskmanager.securityconfig.rolespermissions.ApplicationRoles;
 import com.aminejava.taskmanager.services.user.UserService;
@@ -30,17 +31,17 @@ public class AdminService {
 
     private final UserService userService;
     private final AdminRepository adminRepository;
-    private final JwtGenerator jwtGenerator;
+    private final JwtTool jwtTool;
     private final AdminAuthService adminAuthService;
     private final SystemTaskManager systemTaskManager;
     private final TaskManagerAdminLoggerRepository taskManagerAdminLoggerRepository;
     private final AppTool appTool;
 
     public AdminService(UserService userService, AdminRepository adminRepository,
-                        JwtGenerator jwtGenerator, AdminAuthService adminAuthService, SystemTaskManager systemTaskManager, TaskManagerAdminLoggerRepository taskManagerAdminLoggerRepository, AppTool appTool) {
+                        JwtTool jwtGenerator, AdminAuthService adminAuthService, SystemTaskManager systemTaskManager, TaskManagerAdminLoggerRepository taskManagerAdminLoggerRepository, AppTool appTool) {
         this.userService = userService;
         this.adminRepository = adminRepository;
-        this.jwtGenerator = jwtGenerator;
+        this.jwtTool = jwtGenerator;
         this.adminAuthService = adminAuthService;
         this.systemTaskManager = systemTaskManager;
         this.taskManagerAdminLoggerRepository = taskManagerAdminLoggerRepository;
@@ -50,7 +51,7 @@ public class AdminService {
 
     public AdminResponseDto addManager(AddManagementRoleRegisterDto addManagementRoleRegisterDto, HttpHeaders httpHeaders) {
         // Check if Token in BlackList
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), httpHeaders, null);
 
         // Log the api
@@ -65,7 +66,7 @@ public class AdminService {
 
     public List<AdminResponseForGetAllDto> getAllCreatedManagers(HttpHeaders httpHeaders) {
         // Check if Token in BlackList
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), httpHeaders, null);
 
         TaskManagerAdminHistoric taskManagerAdminHistoric = appTool.logOperationOfAdmins(parseTokenResponse.getUsername(), "ALL_MANAGERS");
@@ -84,7 +85,7 @@ public class AdminService {
     public DeleteManagerRoleResponseDto deleteManager(Long id, HttpHeaders httpHeaders) {
 
         // Check if Token in BlackList
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), httpHeaders, null);
 
         Optional<Admin> optionalAdmin = adminRepository.findAdminByAdminId(id);
@@ -118,18 +119,16 @@ public class AdminService {
         return deleteManagerRoleResponseDto;
     }
 
-    @Transactional
     public DeleteUserResponseDto deleteUser(Long id, HttpHeaders httpHeaders) {
         // Check if Token in BlackList
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
-        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), httpHeaders, null);
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         TaskManagerAdminHistoric taskManagerAdminHistoric = appTool.logOperationOfAdmins(parseTokenResponse.getUsername(), "DELETE_USER_ROLE");
         DeleteUserResponseDto deleteUserResponseDto = userService.deleteUser(id, httpHeaders, "ADMIN");
         taskManagerAdminHistoric.setSuccessOperation(true);
         taskManagerAdminHistoric.setResponseBody(deleteUserResponseDto.getDescription());
         taskManagerAdminLoggerRepository.save(taskManagerAdminHistoric);
-        return deleteUserResponseDto;
+        return userService.deleteUser(id, httpHeaders, null);
     }
 
 

@@ -1,13 +1,24 @@
 package com.aminejava.taskmanager;
 
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Objects;
 
 class TaskManagerApplicationTests {
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws JSONException {
+
+        System.out.println(new Date((1703503753*1000l)));
+
+
+
+//        System.out.println(date);
+//        System.out.println(u);
 //        Employee employee = new Employee();
 //        employee.id = 1;
 //        employee.setName("name1");
@@ -29,15 +40,7 @@ class TaskManagerApplicationTests {
 //        System.out.println(employees.size());
 //        employees.forEach(employee1 -> employee1.getName());
 
-        String val = "sds";
-        String val2 = "sds6";
 
-        if(val!=null && val2.equals(val)){
-            System.out.println("sdgs");
-        }
-        else{
-            System.out.println("test");
-        }
 
     }
 }

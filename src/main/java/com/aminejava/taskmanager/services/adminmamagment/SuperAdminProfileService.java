@@ -13,7 +13,7 @@ import com.aminejava.taskmanager.model.UserDetails;
 import com.aminejava.taskmanager.model.admin.Admin;
 import com.aminejava.taskmanager.repository.AdminRepository;
 import com.aminejava.taskmanager.repository.TaskManagerAdminLoggerRepository;
-import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
+import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseTokenResponse;
 import com.aminejava.taskmanager.system.entities.TaskManagerAdminHistoric;
 import com.aminejava.taskmanager.system.exception.BlacklistException;
@@ -47,18 +47,18 @@ public class SuperAdminProfileService {
     @Value("${pathFolder}")
     private String pathFolder;
 
-    private final JwtGenerator jwtGenerator;
+    private final JwtTool jwtTool;
     private final SystemTaskManager systemTaskManager;
     private final AdminRepository adminRepository;
     private final AppTool appTool;
     private final PasswordEncoder passwordEncoder;
     private final TaskManagerAdminLoggerRepository taskManagerAdminHistoricRepository;
 
-    public SuperAdminProfileService(JwtGenerator jwtGenerator, SystemTaskManager systemTaskManager,
+    public SuperAdminProfileService(JwtTool jwtGenerator, SystemTaskManager systemTaskManager,
                                     AdminRepository adminRepository, AppTool appTool,
                                     PasswordEncoder passwordEncoder,
                                     TaskManagerAdminLoggerRepository taskManagerAdminHistoricRepository) {
-        this.jwtGenerator = jwtGenerator;
+        this.jwtTool = jwtGenerator;
         this.systemTaskManager = systemTaskManager;
         this.adminRepository = adminRepository;
         this.appTool = appTool;
@@ -67,7 +67,7 @@ public class SuperAdminProfileService {
     }
 
     public AdminProfileResponseDto showProfileOAdmin(HttpHeaders requestHeader) throws BlacklistException, AuthException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
@@ -119,7 +119,7 @@ public class SuperAdminProfileService {
     @Transactional
     public String changeUsernameOfAdmin(String newUsername, HttpHeaders requestHeader) throws BlacklistException {
 
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
         if (!appTool.validUserName(newUsername)) {
@@ -141,15 +141,15 @@ public class SuperAdminProfileService {
 
     public String updatePassword(ChangePasswordRequestDto changePasswordRequestDto, HttpHeaders requestHeader) throws BlacklistException {
 
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
 
         TaskManagerAdminHistoric taskManagerAdminHistoric = appTool.logOperationOfAdmins(parseTokenResponse.getUsername(), "CHANGE_PASSWORD");
-        if (Strings.isNullOrEmpty(changePasswordRequestDto.getNewPassword()) || Strings.isNullOrEmpty(changePasswordRequestDto.getOldUPassword())) {
+        if (Strings.isNullOrEmpty(changePasswordRequestDto.getNewPassword()) || Strings.isNullOrEmpty(changePasswordRequestDto.getOldPassword())) {
             throw new ValidationDataException("The given passwords must have a value");
         }
-        if (changePasswordRequestDto.getNewPassword().equalsIgnoreCase(changePasswordRequestDto.getOldUPassword())) {
+        if (changePasswordRequestDto.getNewPassword().equalsIgnoreCase(changePasswordRequestDto.getOldPassword())) {
             throw new ValidationDataException("The both given passwords are equal. The Both  must be different from each other ");
         }
         if (!appTool.validUserPassword(changePasswordRequestDto.getNewPassword())) {
@@ -160,7 +160,7 @@ public class SuperAdminProfileService {
 
         Admin admin = optionalAdmin.get();
 
-        if (passwordEncoder.matches(changePasswordRequestDto.getOldUPassword(), optionalAdmin.get().getPassword())) {
+        if (passwordEncoder.matches(changePasswordRequestDto.getOldPassword(), optionalAdmin.get().getPassword())) {
             admin.setPassword(passwordEncoder.encode(changePasswordRequestDto.getNewPassword()));
             taskManagerAdminHistoric.setResponseBody("Password was changed succesfully");
             taskManagerAdminHistoric.setSuccessOperation(true);
@@ -183,7 +183,7 @@ public class SuperAdminProfileService {
     public String logout(HttpServletRequest request, HttpServletResponse response) throws BlacklistException {
 
         // Check if Token in BlackList
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), null, request);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -205,7 +205,7 @@ public class SuperAdminProfileService {
 
     // Add/Update UserDetails
     public UserDetailsDto updateAdminDetails(UserDetailsDto userDetailsDto, HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
@@ -251,7 +251,7 @@ public class SuperAdminProfileService {
     }
 
     public String uploadPhoto(MultipartFile multipartFile, HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         if (multipartFile == null || multipartFile.isEmpty()) {
             throw new ValidationDataException("You need to give a path photo to upload it ");
         }
@@ -294,7 +294,7 @@ public class SuperAdminProfileService {
 
     @Transactional
     public String changeEmail(String newEmail, HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
@@ -320,7 +320,7 @@ public class SuperAdminProfileService {
     }
 
     public String deletePhoto(HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
@@ -348,6 +348,24 @@ public class SuperAdminProfileService {
         }
 
         return "Photo deleted";
+    }
+
+    @Transactional
+    public Boolean deleteSuperAdminAccount(HttpHeaders requestHeader) {
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
+        // Check if Token in BlackList
+        systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
+        Optional<Admin> optionalAdmin = adminRepository.findAdminByAdminId(parseTokenResponse.getId());
+        if(optionalAdmin.isEmpty()){
+          throw new AuthException("The Super Admin is not found in DB");
+        }
+        Admin admin = optionalAdmin.get();
+        if(admin.isDeleted()){
+            throw new AuthException("The Super Admin is already deleted");
+        }
+
+        admin.setDeleted(true);
+        return true;
     }
 
     private void saveFile(String uploadPath, MultipartFile multipartFile) throws IOException {

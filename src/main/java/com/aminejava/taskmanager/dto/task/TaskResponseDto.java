@@ -9,11 +9,12 @@ import java.util.Set;
 
 @Data
 public class TaskResponseDto {
+    private Long taskId;
     private Long projectId;
     private Long projectManagerId;
     private String name;
-    private Priority priority;
     private State state;
+    private Priority priority;
     private String description;
     private Set<SubTask> subTaskSet;
 }

@@ -1,14 +1,12 @@
 package com.aminejava.taskmanager.securityconfig.userdeatails.implementation;
 
-import com.aminejava.taskmanager.controller.tool.AppTool;
-import com.aminejava.taskmanager.exception.ResourceNotFoundException;
-import com.aminejava.taskmanager.exception.user.UserLockoutException;
 import com.aminejava.taskmanager.model.User;
 import com.aminejava.taskmanager.model.admin.Admin;
 import com.aminejava.taskmanager.repository.AdminRepository;
 import com.aminejava.taskmanager.repository.UserRepository;
 import com.aminejava.taskmanager.securityconfig.userdeatails.models.ApplicationUserDetails;
 import com.aminejava.taskmanager.securityconfig.userdeatails.IApplicationUserDetailsService;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -36,7 +34,10 @@ public class DetailsServiceLoader implements IApplicationUserDetailsService {
         Optional<User> optionalUser = userRepository.findByUsername(username);
 
         if (optionalUser.isEmpty() || optionalUser.get().isDeleted()) {
-            return null;
+            throw new InternalAuthenticationServiceException("User with this username is not found");
+        }
+        if(!optionalUser.get().isEnabled()){
+            throw new InternalAuthenticationServiceException("The user is Disabaled. Contact Administartion");
         }
 
         User user = optionalUser.get();
@@ -61,7 +62,10 @@ public class DetailsServiceLoader implements IApplicationUserDetailsService {
         Optional<Admin> optionalAdmin = adminRepository.findAdminByUsername(userNameAdmin);
 
         if (optionalAdmin.isEmpty() || optionalAdmin.get().isDeleted()) {
-            return null;
+            throw new InternalAuthenticationServiceException("Admin with this username is not found");
+        }
+        if(!optionalAdmin.get().isEnabled()){
+            throw new InternalAuthenticationServiceException("This Admin is Disabaled. Contact Administartion");
         }
 
         Admin admin = optionalAdmin.get();

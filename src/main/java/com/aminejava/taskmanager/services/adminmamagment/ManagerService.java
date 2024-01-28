@@ -5,15 +5,13 @@ import com.aminejava.taskmanager.dto.management.manager.ShortUserResponseDto;
 import com.aminejava.taskmanager.dto.management.manager.UserManagerProjectAffectationDto;
 import com.aminejava.taskmanager.dto.management.manager.UserProjectResponseDto;
 import com.aminejava.taskmanager.dto.project.DeleteProjectResponseDto;
-import com.aminejava.taskmanager.dto.project.ProjectAddDto;
 import com.aminejava.taskmanager.dto.project.ProjectResponseDto;
-import com.aminejava.taskmanager.dto.project.ProjectUpdateDto;
-import com.aminejava.taskmanager.dto.subtask.DeleteSubTaskDto;
+import com.aminejava.taskmanager.dto.project.ProjectDto;
 import com.aminejava.taskmanager.dto.subtask.SubTaskRequestDto;
 import com.aminejava.taskmanager.dto.subtask.SubTaskResponseDto;
 import com.aminejava.taskmanager.dto.subtask.SubTaskUpdateDto;
 import com.aminejava.taskmanager.dto.task.DeleteTaskResponseDto;
-import com.aminejava.taskmanager.dto.task.TaskAddDto;
+import com.aminejava.taskmanager.dto.task.TaskDto;
 import com.aminejava.taskmanager.dto.task.TaskResponseDto;
 import com.aminejava.taskmanager.dto.task.TaskUpdateDto;
 import com.aminejava.taskmanager.exception.ValidationDataException;
@@ -24,20 +22,21 @@ import com.aminejava.taskmanager.model.admin.Admin;
 import com.aminejava.taskmanager.repository.AdminRepository;
 import com.aminejava.taskmanager.repository.ProjectManagerRepository;
 import com.aminejava.taskmanager.repository.UserRepository;
-import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
+import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseTokenResponse;
 import com.aminejava.taskmanager.services.project.ProjectManagerService;
 import com.aminejava.taskmanager.system.services.SystemTaskManager;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
 @Service
 public class ManagerService {
 
-    private final JwtGenerator jwtGenerator;
+    private final JwtTool jwtTool;
     private final UserRepository userRepository;
     private final AdminRepository adminRepository;
     private final ProjectManagerService projectManagerService;
@@ -45,12 +44,12 @@ public class ManagerService {
     private final SystemTaskManager systemTaskManager;
 
     public ManagerService(
-            JwtGenerator jwtGenerator,
+            JwtTool jwtTool,
             UserRepository userRepository,
             AdminRepository adminRepository,
             ProjectManagerService projectManagerService,
             ProjectManagerRepository projectManagerRepository, SystemTaskManager systemTaskManager) {
-        this.jwtGenerator = jwtGenerator;
+        this.jwtTool = jwtTool;
         this.userRepository = userRepository;
         this.adminRepository = adminRepository;
         this.projectManagerService = projectManagerService;
@@ -58,17 +57,11 @@ public class ManagerService {
         this.systemTaskManager = systemTaskManager;
     }
 
-    // Permission: RIGHT_READ: TASK,SUBATASK,PROJECT.
-    // Permission: AFFECT_USERS_TO_PROJECT
-
-
-    // Project
-
-    public ProjectResponseDto createProjectOfManager(ProjectAddDto projectDto, HttpHeaders httpHeaders) {
+    public ProjectResponseDto createProjectOfManager(ProjectDto projectDto, HttpHeaders httpHeaders) {
         return projectManagerService.saveProjectOfManager(projectDto, httpHeaders);
     }
 
-    public ProjectResponseDto updateProjectOfManager(Long projectManagerId, ProjectUpdateDto projectUpdateDto, HttpHeaders httpHeaders) {
+    public ProjectResponseDto updateProjectOfManager(Long projectManagerId, ProjectDto projectUpdateDto, HttpHeaders httpHeaders) {
         return projectManagerService.updateProjectOfManager(projectManagerId, projectUpdateDto, httpHeaders);
     }
 
@@ -87,7 +80,7 @@ public class ManagerService {
 
     // #################### Task
 
-    public TaskResponseDto createTaskOfProjectManager(TaskAddDto taskDto, HttpHeaders httpHeaders) {
+    public TaskResponseDto createTaskOfProjectManager(TaskDto taskDto, HttpHeaders httpHeaders) {
         return projectManagerService.saveTaskOfProjectManager(taskDto, httpHeaders);
     }
 
@@ -125,14 +118,14 @@ public class ManagerService {
         return projectManagerService.getSubTaskById(id, httpHeaders);
     }
 
-    public DeleteSubTaskDto deleteSubTaskById(Long id, HttpHeaders httpHeaders) {
-        return projectManagerService.deleteSubTaskById(id, httpHeaders);
+    public ResponseEntity<?> deleteSubTaskById(Long id, HttpHeaders httpHeaders) {
+        return ResponseEntity.status(HttpStatus.OK).body(projectManagerService.deleteSubTaskById(id, httpHeaders));
     }
 
     // ############   Affect Users to the ProjectManager
 
     public UserProjectResponseDto affectUsersToTheProject(UserManagerProjectAffectationDto userProjectDto, HttpHeaders httpHeaders) {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), httpHeaders, null);
 
         UserProjectResponseDto userProjectResponseDto = new UserProjectResponseDto();
@@ -201,7 +194,7 @@ public class ManagerService {
     }
 
     public Set<GroupOfWorksResponseDto> getGroupWorksOfManager(HttpHeaders httpHeaders) {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), httpHeaders, null);
         Set<GroupOfWorksResponseDto> groupOfWorksResponseDtos = new HashSet<>();
 

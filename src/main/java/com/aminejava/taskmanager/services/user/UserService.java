@@ -1,7 +1,7 @@
 package com.aminejava.taskmanager.services.user;
 
 import com.aminejava.taskmanager.exception.user.AuthException;
-import com.aminejava.taskmanager.repository.AdminRepository;
+import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.system.services.SystemTaskManager;
 import com.aminejava.taskmanager.system.entities.TaskManagerUserHistoric;
 import com.aminejava.taskmanager.controller.tool.AppTool;
@@ -17,7 +17,6 @@ import com.aminejava.taskmanager.model.User;
 import com.aminejava.taskmanager.model.UserDetails;
 import com.aminejava.taskmanager.repository.TaskManagerUserLoggerRepository;
 import com.aminejava.taskmanager.repository.UserRepository;
-import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseTokenResponse;
 import com.aminejava.taskmanager.system.exception.BlacklistException;
 import com.google.common.base.Strings;
@@ -51,25 +50,22 @@ public class UserService {
     private String pathFolder;
 
     private final UserRepository userRepository;
-    private final JwtGenerator jwtGenerator;
+    private final JwtTool jwtTool;
     private final PasswordEncoder passwordEncoder;
     private final AppTool appTool;
     private final TaskManagerUserLoggerRepository taskManagerUserLoggerRepository;
     private final SystemTaskManager systemTaskManager;
-    private final AdminRepository adminRepository;
 
 
-    public UserService(UserRepository userRepository, JwtGenerator jwtGenerator, PasswordEncoder passwordEncoder, AppTool appTool,
+    public UserService(UserRepository userRepository, JwtTool jwtTool, PasswordEncoder passwordEncoder, AppTool appTool,
                        TaskManagerUserLoggerRepository taskManagerUserLoggerRepository,
-                       SystemTaskManager systemTaskManager,
-                       AdminRepository adminRepository) {
+                       SystemTaskManager systemTaskManager) {
         this.userRepository = userRepository;
-        this.jwtGenerator = jwtGenerator;
+        this.jwtTool = jwtTool;
         this.passwordEncoder = passwordEncoder;
         this.appTool = appTool;
         this.taskManagerUserLoggerRepository = taskManagerUserLoggerRepository;
         this.systemTaskManager = systemTaskManager;
-        this.adminRepository = adminRepository;
     }
 
     // Profile.
@@ -77,8 +73,7 @@ public class UserService {
     // Show User: Username, email, userDetails
 
     public UserProfileDto showProfileOfUser(HttpHeaders requestHeader) throws BlacklistException, AuthException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
-
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
 
@@ -102,6 +97,9 @@ public class UserService {
             userDetailsDto.setFirstName(userDetails.getFirstName());
             userDetailsDto.setDescription(userDetails.getDescription());
             userDetailsDto.setProfilePhoto(userDetails.getImagePath());
+            userDetailsDto.setMobile(userDetails.getMobile());
+            userDetailsDto.setPhone(userDetails.getPhone());
+            userDetailsDto.setJob(userDetails.getJob());
             userProfileDto.setUserDetailsDto(userDetailsDto);
         }
 
@@ -116,25 +114,25 @@ public class UserService {
     // Update Username
 
     @Transactional
-    public String changeUsernameOfUser(String newUsername, HttpHeaders requestHeader) throws BlacklistException {
+    public String changeUsernameOfUser(LoginProfileRequestDto loginProfileRequestDto, HttpHeaders requestHeader) throws BlacklistException {
 
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
-        if (!appTool.validUserName(newUsername)) {
+        if (!appTool.validUserName(loginProfileRequestDto.getUsername())) {
             throw new ValidationDataException("The given username is not valid. It must have at minimum 8 character !!");
         }
 
 
         Optional<User> optionalUser = userRepository.findUserById(parseTokenResponse.getId());
-        optionalUser.get().setUsername(newUsername);
+        optionalUser.get().setUsername(loginProfileRequestDto.getUsername());
 
         // Add Historic
         TaskManagerUserHistoric taskManagerUserHistoric = appTool.logOperationOfUsers(parseTokenResponse.getUsername(), "USER_CHANGE_USERNAME");
         taskManagerUserHistoric.setResponseBody("Change username of User");
         taskManagerUserHistoric.setSuccessOperation(true);
         taskManagerUserLoggerRepository.save(taskManagerUserHistoric);
-        return newUsername;
+        return loginProfileRequestDto.getUsername();
 
     }
 
@@ -142,15 +140,15 @@ public class UserService {
 
     public String updatePassword(ChangePasswordRequestDto changePasswordRequestDto, HttpHeaders requestHeader) throws BlacklistException {
 
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
 
         TaskManagerUserHistoric taskManagerUserLogger = appTool.logOperationOfUsers(parseTokenResponse.getUsername(), "CHANGE_PASSWORD");
-        if (Strings.isNullOrEmpty(changePasswordRequestDto.getNewPassword()) || Strings.isNullOrEmpty(changePasswordRequestDto.getOldUPassword())) {
+        if (Strings.isNullOrEmpty(changePasswordRequestDto.getNewPassword()) || Strings.isNullOrEmpty(changePasswordRequestDto.getOldPassword())) {
             throw new ValidationDataException("The given passwords must have a value");
         }
-        if (changePasswordRequestDto.getNewPassword().equalsIgnoreCase(changePasswordRequestDto.getOldUPassword())) {
+        if (changePasswordRequestDto.getNewPassword().equalsIgnoreCase(changePasswordRequestDto.getOldPassword())) {
             throw new ValidationDataException("The both given passwords are equal. The Both  must be different from each other ");
         }
         if (!appTool.validUserPassword(changePasswordRequestDto.getNewPassword())) {
@@ -161,7 +159,7 @@ public class UserService {
 
         User user = optionalUser.get();
 
-        if (passwordEncoder.matches(changePasswordRequestDto.getOldUPassword(), optionalUser.get().getPassword())) {
+        if (passwordEncoder.matches(changePasswordRequestDto.getOldPassword(), optionalUser.get().getPassword())) {
             user.setPassword(passwordEncoder.encode(changePasswordRequestDto.getNewPassword()));
             taskManagerUserLogger.setResponseBody("Password was changed succesfully");
             taskManagerUserLogger.setSuccessOperation(true);
@@ -170,7 +168,7 @@ public class UserService {
             List<String> headerValues = requestHeader.get("Authorization");
             String token = headerValues.get(0).replace("Bearer", "");
             systemTaskManager.saveNewTokenToBlackList(token);
-            return "Password was changed succesfully";
+            return "Password was changed succesfully. Please Login again";
         }
 
         taskManagerUserLogger.setErrorMessage("You have given a wrong old password ");
@@ -183,7 +181,7 @@ public class UserService {
     public String logout(HttpServletRequest request, HttpServletResponse response) throws BlacklistException {
 
         // Check if Token in BlackList
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), null, request);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -206,7 +204,7 @@ public class UserService {
 
     // Add/Update UserDetails
     public UserDetailsDto updateUserDetails(UserDetailsDto userDetailsDto, HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
@@ -238,6 +236,15 @@ public class UserService {
         if (!Strings.isNullOrEmpty(userDetailsDto.getDescription())) {
             userDetails.setDescription(userDetailsDto.getDescription());
         }
+        if (!Strings.isNullOrEmpty(userDetailsDto.getMobile())) {
+            userDetails.setMobile(userDetailsDto.getMobile());
+        }
+        if (!Strings.isNullOrEmpty(userDetailsDto.getPhone())) {
+            userDetails.setPhone(userDetailsDto.getPhone());
+        }
+        if (!Strings.isNullOrEmpty(userDetailsDto.getJob())) {
+            userDetails.setJob(userDetailsDto.getJob());
+        }
         user.setUserDetails(userDetails);
         userRepository.save(user);
 
@@ -252,7 +259,7 @@ public class UserService {
     }
 
     public String uploadPhoto(MultipartFile multipartFile, HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         if (multipartFile == null || multipartFile.isEmpty()) {
             throw new ValidationDataException("You need to give a path photo to upload it ");
         }
@@ -294,33 +301,33 @@ public class UserService {
     // Change Email
 
     @Transactional
-    public String changeEmail(String newEmail, HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+    public String changeEmail(LoginProfileRequestDto loginProfileRequestDto, HttpHeaders requestHeader) throws BlacklistException {
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
 
         Optional<User> optionalUser = userRepository.findUserById(parseTokenResponse.getId());
         // Check if the email is correct
-        if (!appTool.checkValidationOfGivenEmail(newEmail)) {
-            throw new EmailValidationException("This email is not valid: " + newEmail);
+        if (!appTool.checkValidationOfGivenEmail(loginProfileRequestDto.getEmail())) {
+            throw new EmailValidationException("This email is not valid: " + loginProfileRequestDto.getEmail());
         }
-        if (optionalUser.get().getEmail().equalsIgnoreCase(newEmail)) {
+        if (optionalUser.get().getEmail().equalsIgnoreCase(loginProfileRequestDto.getEmail())) {
             throw new ValidationDataException("This email is already existed");
         }
-        optionalUser.get().setEmail(newEmail);
+        optionalUser.get().setEmail(loginProfileRequestDto.getEmail());
 
         // Add Historic
         TaskManagerUserHistoric taskManagerUserHistoric = appTool.logOperationOfUsers(parseTokenResponse.getUsername(), "USER_CHANGE_EMAIL");
         taskManagerUserHistoric.setResponseBody("Change email of User");
         taskManagerUserHistoric.setSuccessOperation(true);
         taskManagerUserLoggerRepository.save(taskManagerUserHistoric);
-        return newEmail;
+        return loginProfileRequestDto.getEmail();
 
     }
 
     public String deletePhotoOfUser(HttpHeaders requestHeader) throws BlacklistException {
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
 
         // Check if Token in BlackList
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
@@ -350,6 +357,7 @@ public class UserService {
 
         return "Photo deleted";
     }
+
     public List<User> getAllUsers() {
         return userRepository.findAll().stream().filter(user -> user.isEnabled() && !user.isDeleted())
                 .collect(Collectors.toList());
@@ -359,7 +367,7 @@ public class UserService {
         return userRepository.findAll().stream().filter(user -> user.isEnabled() && !user.isDeleted())
                 .map(user ->
                         new UserResponseDtoForGetAll(user.getUsername(), user.getEmail(),
-                                user.getAdmin() != null ? user.getAdmin().getUsername():null,
+                                user.getAdmin() != null ? user.getAdmin().getUsername() : null,
                                 user.getAdmin() != null ? user.getAdmin().getAdminId() : null))
                 .collect(Collectors.toList());
     }
@@ -382,13 +390,13 @@ public class UserService {
         userResponseDto.setUsername(toggleUser.getUsername());
         String toggle = toggleUser.isToggle() ? " is enable " : "is disabled ";
         userResponseDto.setDescription("The user with username: " + toggleUser.getUsername() + toggle);
+        appTool.saveNewBlackListWithUsername(toggleUser.getUsername(),"DISABLE_USER");
         return userResponseDto;
     }
 
-    @Transactional
     public DeleteUserResponseDto deleteUser(long id, HttpHeaders requestHeader, String role) throws BlacklistException {
         // Check if Token in BlackList
-        ParseTokenResponse parseTokenResponse = jwtGenerator.getParseTokenResponse();
+        ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), requestHeader, null);
 
         Optional<User> optionalUser = userRepository.findUserById(id);
@@ -398,11 +406,12 @@ public class UserService {
             throw new ResourceNotFoundException("This user with id: " + id + " is not found or  is already deleted");
         }
         if (!Strings.isNullOrEmpty(role) && parseTokenResponse.isAdmin()) {
-            if (optionalUser.get().getAdmin()==null || ( optionalUser.get().getAdmin().getAdminId().longValue() != parseTokenResponse.getId().longValue())) {
+            if (optionalUser.get().getAdmin() == null || (optionalUser.get().getAdmin().getAdminId().longValue() != parseTokenResponse.getId().longValue())) {
                 throw new ValidationDataException("You can not delete this user. you have not created !! ");
             }
         }
         optionalUser.get().setDeleted(true);
+        appTool.saveNewBlackListWithUsername(optionalUser.get().getUsername(),"DELETED_USER");
         // Add Historic
         if (Strings.isNullOrEmpty(role)) {
             TaskManagerUserHistoric taskManagerUserHistoric = appTool.logOperationOfUsers(parseTokenResponse.getUsername(), "USER_DELETE_ACCOUNT");

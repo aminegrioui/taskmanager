@@ -11,11 +11,11 @@ public class BlacklistEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-//    @Lob
-//    @Nullable
+
     @Column(columnDefinition="TEXT")
     private String token;
     private String username;
+    private String cause;
 
     private ZonedDateTime expiryTime;
 

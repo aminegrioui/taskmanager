@@ -17,6 +17,9 @@ public class UserDetails {
     private String land;
     private String address;
     private String description;
+    private String phone;
+    private String mobile;
+    private String job;
 
     @Column(name = "image_path")
     private String imagePath;

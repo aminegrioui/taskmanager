@@ -35,11 +35,12 @@ public class Project {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
-
-
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "project", fetch = FetchType.LAZY)
     @JsonIgnore
     private Set<Task> tasks;
+
+    @OneToMany(cascade = CascadeType.ALL,mappedBy = "project",fetch = FetchType.EAGER)
+    private Set<ProjectHistoric> projectHistorics;
 
     public Project(String nameProject) {
         this.nameProject = nameProject;

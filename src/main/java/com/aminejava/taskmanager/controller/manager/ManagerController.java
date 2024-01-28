@@ -1,16 +1,16 @@
 package com.aminejava.taskmanager.controller.manager;
 
 import com.aminejava.taskmanager.dto.management.manager.UserManagerProjectAffectationDto;
-import com.aminejava.taskmanager.dto.project.ProjectAddDto;
-import com.aminejava.taskmanager.dto.project.ProjectUpdateDto;
+import com.aminejava.taskmanager.dto.project.ProjectDto;
 import com.aminejava.taskmanager.dto.subtask.SubTaskRequestDto;
 import com.aminejava.taskmanager.dto.subtask.SubTaskUpdateDto;
-import com.aminejava.taskmanager.dto.task.TaskAddDto;
+import com.aminejava.taskmanager.dto.task.TaskDto;
 import com.aminejava.taskmanager.dto.task.TaskUpdateDto;
 import com.aminejava.taskmanager.services.adminmamagment.ManagerService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,12 +24,14 @@ public class ManagerController {
     }
 
     @PostMapping("/createProject")
-    public ResponseEntity<?> createProject(@RequestBody ProjectAddDto projectDto, @RequestHeader HttpHeaders requestHeader) {
+    @PreAuthorize("hasAnyAuthority('write:project')")
+    public ResponseEntity<?> createProject(@RequestBody ProjectDto projectDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(managerService.createProjectOfManager(projectDto, requestHeader));
     }
 
     @PutMapping("/updateProjectManager/{projectId}")
-    public ResponseEntity<?> updateProjectManager(@PathVariable Long projectId, @RequestBody ProjectUpdateDto projectUpdateDto, @RequestHeader HttpHeaders requestHeader) {
+    @PreAuthorize("hasAnyAuthority('write:project')")
+    public ResponseEntity<?> updateProjectManager(@PathVariable Long projectId, @RequestBody ProjectDto projectUpdateDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(managerService.updateProjectOfManager(projectId, projectUpdateDto, requestHeader));
     }
 
@@ -44,18 +46,19 @@ public class ManagerController {
     }
 
     @DeleteMapping("/delete/projectManager/{projectId}")
+    @PreAuthorize("hasAnyAuthority('write:project')")
     public ResponseEntity<?> deleteProjectManagerById(@PathVariable Long projectId, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(managerService.deleteProjectManagerById(projectId, requestHeader));
     }
 
-    // RIGHT_READ Task
-
     @PostMapping("/createTask")
-    public ResponseEntity<?> createTask(@RequestBody TaskAddDto taskAddDto, @RequestHeader HttpHeaders requestHeader) {
+    @PreAuthorize("hasAnyAuthority('write:task')")
+    public ResponseEntity<?> createTask(@RequestBody TaskDto taskAddDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(managerService.createTaskOfProjectManager(taskAddDto, requestHeader));
     }
 
     @PutMapping("/updateTaskOfManager/{taskId}")
+    @PreAuthorize("hasAnyAuthority('write:project')")
     public ResponseEntity<?> updateTaskOfProjectManager(@PathVariable Long taskId, @RequestBody TaskUpdateDto taskUpdateDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(managerService.updateTaskOfProjectManager(taskId, taskUpdateDto, requestHeader));
     }
@@ -71,6 +74,7 @@ public class ManagerController {
     }
 
     @DeleteMapping("/delete/taskManager/{taskId}")
+    @PreAuthorize("hasAnyAuthority('write:project')")
     public ResponseEntity<?> deleteTaskOfManagerById(@PathVariable Long taskId, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(managerService.deleteTaskOfManagerById(taskId, requestHeader));
     }
@@ -78,11 +82,13 @@ public class ManagerController {
     // RIGHT_READ SubTask
 
     @PostMapping("/createSubTask")
+    @PreAuthorize("hasAnyAuthority('write:subtask')")
     public ResponseEntity<?> createSubTask(@RequestBody SubTaskRequestDto subTaskRequestDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(managerService.saveSubTaskFromManager(subTaskRequestDto, requestHeader));
     }
 
     @PutMapping("/updateSubTaskOfManager/{subTaskId}")
+    @PreAuthorize("hasAnyAuthority('write:subtask')")
     public ResponseEntity<?> updateSubTaskOfProjectManager(@PathVariable Long subTaskId, @RequestBody SubTaskUpdateDto subTaskUpdateDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(managerService.updateSubTask(subTaskId, subTaskUpdateDto, requestHeader));
     }
@@ -98,6 +104,7 @@ public class ManagerController {
     }
 
     @DeleteMapping("/delete/subTaskManager/{subTaskId}")
+    @PreAuthorize("hasAnyAuthority('write:subtask')")
     public ResponseEntity<?> deleteSubTaskOfManagerById(@PathVariable Long subTaskId, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(managerService.deleteSubTaskById(subTaskId, requestHeader));
     }
@@ -105,6 +112,7 @@ public class ManagerController {
     //   Affect Users to the ProjectManager
 
     @PostMapping("/projectManager/affetctUsersToProject")
+    @PreAuthorize("hasAnyAuthority('affect:users_to_project')")
     public ResponseEntity<?> affectUsersToTheProject(@RequestBody UserManagerProjectAffectationDto userProjectDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(managerService.affectUsersToTheProject(userProjectDto, requestHeader));
     }

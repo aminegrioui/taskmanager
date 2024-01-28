@@ -5,18 +5,18 @@ import com.aminejava.taskmanager.model.Task;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.ZonedDateTime;
 import java.util.Set;
 
 @Data
 @NoArgsConstructor
 public class ProjectResponseDto {
-    private String projectName;
+    private String nameProject;
     private String description;
     private String userName;
     private Priority priority;
-    private ZonedDateTime projectStart;
-    private ZonedDateTime projectEnd;
+    private String projectStart;
+    private String endProject;
+    private String department;
     private Set<Task> tasks;
 
 
@@ -24,15 +24,15 @@ public class ProjectResponseDto {
                               String description,
                               String userName,
                               Priority priority,
-                              ZonedDateTime projectStart,
-                              ZonedDateTime endProject,
+                              String projectStart,
+                              String endProject,
                               Set<Task> tasks) {
-        this.projectName = projectName;
+        this.nameProject = projectName;
         this.description = description;
         this.userName = userName;
         this.priority = priority;
         this.projectStart = projectStart;
-        this.projectEnd = endProject;
+        this.endProject = endProject;
         this.tasks = tasks;
     }
 
