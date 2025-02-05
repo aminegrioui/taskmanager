@@ -9,7 +9,6 @@ import com.aminejava.taskmanager.model.SubTask;
 import com.aminejava.taskmanager.model.Task;
 import com.aminejava.taskmanager.repository.SubTaskRepository;
 import com.aminejava.taskmanager.repository.TaskRepository;
-import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
 import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseTokenResponse;
 import com.aminejava.taskmanager.system.services.SystemTaskManager;

@@ -62,7 +62,7 @@ public class JwtTool {
                 throw new BadCredentialsException("Untrusted Jwt ");
             }
             return Jwts.parserBuilder()
-                    .setSigningKey(getPrivateKey1())
+                    .setSigningKey(getPublicKey1())
                     .build()
                     .parseClaimsJws(token);
         } catch (Exception ex) {

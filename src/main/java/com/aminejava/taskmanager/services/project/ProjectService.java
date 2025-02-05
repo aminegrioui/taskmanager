@@ -11,11 +11,11 @@ import com.aminejava.taskmanager.model.User;
 import com.aminejava.taskmanager.repository.ProjectHistoricRepository;
 import com.aminejava.taskmanager.repository.ProjectRepository;
 import com.aminejava.taskmanager.repository.UserRepository;
-import com.aminejava.taskmanager.securityconfig.jwt.JwtGenerator;
 import com.aminejava.taskmanager.securityconfig.jwt.JwtTool;
 import com.aminejava.taskmanager.securityconfig.jwt.ParseTokenResponse;
 import com.aminejava.taskmanager.system.services.SystemTaskManager;
 import com.google.common.base.Strings;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ProjectService {
 
 
@@ -36,18 +37,6 @@ public class ProjectService {
     private final ProjectHistoricService projectHistoricService;
     private final ProjectHistoricRepository projectHistoricRepository;
 
-
-    public ProjectService(ProjectRepository projectRepository, UserRepository userRepository, JwtTool jwtTool, AppTool appTool, ProjectConverter projectConverter, SystemTaskManager systemTaskManager, ProjectHistoricService projectHistoricService,
-                          ProjectHistoricRepository projectHistoricRepository) {
-        this.projectRepository = projectRepository;
-        this.userRepository = userRepository;
-        this.jwtTool = jwtTool;
-        this.appTool = appTool;
-        this.projectConverter = projectConverter;
-        this.systemTaskManager = systemTaskManager;
-        this.projectHistoricService = projectHistoricService;
-        this.projectHistoricRepository = projectHistoricRepository;
-    }
 
     public List<ProjectResponseDto> getAllProjects(HttpHeaders requestHeader) {
 
@@ -194,7 +183,7 @@ public class ProjectService {
 
         Optional<User> optionalUser = userRepository.findUserById(userId);
 
-        if(!Strings.isNullOrEmpty(newProject.getNameProject())){
+        if (!Strings.isNullOrEmpty(newProject.getNameProject())) {
             trackOldProjectValue.setNameProject(oldProject.getNameProject());
             oldProject.setNameProject(newProject.getNameProject());
         }
@@ -234,8 +223,8 @@ public class ProjectService {
         }
 
         // save historic of project
-       ProjectHistoric projectHistoric=  projectHistoricService.saveUpdatedValuesOfProject(trackOldProjectValue, newProject);
-        Set<ProjectHistoric> projectHistorics=oldProject.getProjectHistorics();
+        ProjectHistoric projectHistoric = projectHistoricService.saveUpdatedValuesOfProject(trackOldProjectValue, newProject);
+        Set<ProjectHistoric> projectHistorics = oldProject.getProjectHistorics();
         projectHistorics.add(projectHistoric);
         oldProject.setProjectHistorics(projectHistorics);
         projectHistoric.setProject(oldProject);
@@ -264,11 +253,11 @@ public class ProjectService {
         optionalProject.get().getTasks().forEach(task -> task.setDeleted(true));
         optionalProject.get().setDeleted(true);
         // save historic of project
-       ProjectHistoric projectHistoric= projectHistoricService.saveDeletedDatumOfProject(optionalProject.get());
-       Set<ProjectHistoric> projectHistorics=optionalProject.get().getProjectHistorics();
-       projectHistorics.add(projectHistoric);
-       optionalProject.get().setProjectHistorics(projectHistorics);
-       projectHistoric.setProject(optionalProject.get());
+        ProjectHistoric projectHistoric = projectHistoricService.saveDeletedDatumOfProject(optionalProject.get());
+        Set<ProjectHistoric> projectHistorics = optionalProject.get().getProjectHistorics();
+        projectHistorics.add(projectHistoric);
+        optionalProject.get().setProjectHistorics(projectHistorics);
+        projectHistoric.setProject(optionalProject.get());
         return new DeleteProjectResponseDto(true, "The Project with id: " + id + " is deleted");
     }
 
@@ -301,13 +290,14 @@ public class ProjectService {
                 task.getSubTasks().forEach(subTask -> subTask.setState(State.COMPLETED));
             }
         });
-       ProjectHistoric projectHistoric=  projectHistoricService.saveFinishedDatum(project);
-        Set<ProjectHistoric> projectHistorics=project.getProjectHistorics();
+        ProjectHistoric projectHistoric = projectHistoricService.saveFinishedDatum(project);
+        Set<ProjectHistoric> projectHistorics = project.getProjectHistorics();
         projectHistorics.add(projectHistoric);
         project.setProjectHistorics(projectHistorics);
         projectHistoric.setProject(project);
         return convertProjectToProjectResponseDto(project);
     }
+
     private ProjectResponseDto convertProjectToProjectResponseDto(Project project) {
         ProjectResponseDto projectResponseDto = new ProjectResponseDto();
         projectResponseDto.setUserName(project.getUser().getUsername());

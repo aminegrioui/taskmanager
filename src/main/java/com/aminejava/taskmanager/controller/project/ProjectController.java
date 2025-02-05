@@ -24,14 +24,13 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.OK).body(projectService.getProjectsOfTheAuthenticatedUser(requestHeader));
     }
 
-
     @PostMapping("/addProject")
     public ResponseEntity<?> saveProject(@RequestBody ProjectDto projectDto,@RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(projectService.saveProject(projectDto,requestHeader));
     }
 
     @PutMapping("/updateProject/{projectId}")
-    private ResponseEntity<?> updateProject(@PathVariable Long projectId, @RequestBody ProjectDto projectDto, @RequestHeader HttpHeaders requestHeader) {
+    public ResponseEntity<?> updateProject(@PathVariable Long projectId, @RequestBody ProjectDto projectDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.CREATED).body(projectService.updateProject(projectId,projectDto,requestHeader));
     }
 

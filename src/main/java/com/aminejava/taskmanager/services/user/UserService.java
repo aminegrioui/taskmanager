@@ -185,10 +185,6 @@ public class UserService {
         ParseTokenResponse parseTokenResponse = jwtTool.getParseTokenResponse();
         systemTaskManager.checkTokenInBlackList(parseTokenResponse.getUsername(), null, request);
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null) {
-            new SecurityContextLogoutHandler().logout(request, response, authentication);
-        }
 
         // Add the actual token to the blackList
         String token = request.getHeader("Authorization").replace("Bearer", "");

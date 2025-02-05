@@ -23,7 +23,7 @@ public class SuperAdminProfileController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+//    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> showProfileOfSuperAdmin(@RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(superAdminProfileService.showProfileOAdmin(requestHeader));
     }
@@ -44,7 +44,7 @@ public class SuperAdminProfileController {
     }
 
     @PutMapping("/updateSuperAdminDetails")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+//    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> updateAdminDetails(@RequestBody UserDetailsDto userDetailsDto, @RequestHeader HttpHeaders requestHeader) {
         return ResponseEntity.status(HttpStatus.OK).body(superAdminProfileService.updateAdminDetails(userDetailsDto, requestHeader));
     }

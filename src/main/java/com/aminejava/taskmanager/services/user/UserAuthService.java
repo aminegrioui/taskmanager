@@ -84,7 +84,6 @@ public class UserAuthService {
             User user = new User();
             user.setUsername(userDto.getUsername());
             user.setPassword(passwordEncoder.encode(userDto.getPassword()));
-            emailService.sendEmailToUser(userDto.getEmail(), user.getUsername(), link);
             user.setEmail(userDto.getEmail());
             user.setEnabled(false);
             user.setCredentialsNonExpired(true);
@@ -102,6 +101,8 @@ public class UserAuthService {
             taskManagerUserLogger.setResponseBody("User with userName " + userDto.getUsername() + " was registered");
             taskManagerUserLogger.setSuccessOperation(true);
             taskManagerUserLoggerRepository.save(taskManagerUserLogger);
+            // enable user using email, and check if email valid is
+            emailService.sendEmailToUser(userDto.getEmail(), user.getUsername(), link);
             return userResponseDto;
         }
         throw new AlreadyExistUserException("User with this userName " + userDto.getUsername() + " and email: " + userDto.getUsername() + " was already existed ");
@@ -114,6 +115,10 @@ public class UserAuthService {
         TaskManagerUserHistoric taskManagerUserLogger = appTool.logOperationOfUsers(userLoginDto.getUsername(), "LOGIN");
         try {
             UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(userLoginDto.getUsername(), userLoginDto.getPassword());
+            //The AuthenticationManager interface is the main entry point for
+            // authentication in Spring Security. It typically delegates the authentication process to one or more AuthenticationProvider instances.
+
+            // An AuthenticationProvider is responsible for authenticating a user based on the provided credentials.
             Authentication authentication = authenticationManager.authenticate(usernamePasswordAuthenticationToken);
 
             LoginResponseDto loginResponseDto = jwtGenerator.generateAccessAndRefreshJwtToken(false, authentication, ((ApplicationUserDetails) authentication.getPrincipal()).getId(), userLoginDto.getUsername());

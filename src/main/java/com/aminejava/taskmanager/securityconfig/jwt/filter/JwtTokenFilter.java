@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -85,6 +87,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
             usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(username, null, grantedAuthorities);
             SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
             filterChain.doFilter(httpServletRequest, httpServletResponse);
         } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException | BadCredentialsException |
@@ -92,7 +95,10 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             resolver.resolveException(httpServletRequest, httpServletResponse, null, e);
         } catch (Exception ex) {
             resolver.resolveException(httpServletRequest, httpServletResponse, null, ex);
-//            throw new GlobalException(ex.getMessage());
+          throw new GlobalException(ex.getMessage());
         }
+
+        resolver.resolveException(httpServletRequest, httpServletResponse, null, new Exception("Exception"));
+        throw new BadCredentialsException("Exception");
     }
 }
