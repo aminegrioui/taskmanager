@@ -6,7 +6,6 @@
 
 ```bash
 git clone https://github.com/aminegrioui/taskmanager.git
-cd <project-directory>
 ```
 
 ## 🐳 Run PostgreSQL Container
@@ -29,10 +28,6 @@ docker run -d \
 - **Password:** `password`
 - **Port:** `5437` (local) → `5432` (container)
 
-## ⚙️ Configure Application
-
-Ensure your `application.properties` matches the PostgreSQL setup.
-
 ## 🏃 Run the Application
 
 Start the Spring Boot application:
@@ -49,14 +44,4 @@ Import into your Insomnia workspace:
 
 This collection contains pre-configured API requests for quick testing.
 
-## 🗑️ Stop and Remove PostgreSQL Container
-
-When done, stop and remove the container:
-
-```bash
-docker stop postgres-container-db
-docker rm postgres-container-db
-```
-
----
 
