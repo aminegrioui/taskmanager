@@ -22,12 +22,6 @@ docker run -d \
   postgres:15
 ```
 
-- **Container Name:** `postgres-container-db-tm`
-- **Database:** `taskmanager_db`
-- **Username:** `username`
-- **Password:** `password`
-- **Port:** `5437` (local) → `5432` (container)
-
 ## 🏃 Run the Application
 
 Start the Spring Boot application:
